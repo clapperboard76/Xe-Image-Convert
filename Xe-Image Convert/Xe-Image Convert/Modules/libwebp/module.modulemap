@@ -1,0 +1,7 @@
+module libwebp [system] {
+    header "/opt/homebrew/include/webp/decode.h"
+    header "/opt/homebrew/include/webp/encode.h"
+    header "/opt/homebrew/include/webp/types.h"
+    link "webp"
+    export *
+} 

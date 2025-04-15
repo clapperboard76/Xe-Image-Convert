@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D25C53742DADE4B900F30C8E /* libwebp.7.1.10.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D25C53732DADE4B900F30C8E /* libwebp.7.1.10.dylib */; };
+		D2A367C42DADFCDA000313CF /* /opt/homebrew/opt/webp/lib/libwebp.7.1.10.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = D2A367C12DADFC90000313CF /* /opt/homebrew/opt/webp/lib/libwebp.7.1.10.dylib */; };
+		D2A367C52DADFCDA000313CF /* /opt/homebrew/opt/webp/lib/libwebp.7.1.10.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = D2A367C12DADFC90000313CF /* /opt/homebrew/opt/webp/lib/libwebp.7.1.10.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		D25C53512DADE0F200F30C8E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -23,15 +29,44 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		D2A367C62DADFCDA000313CF /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				D2A367C52DADFCDA000313CF /* /opt/homebrew/opt/webp/lib/libwebp.7.1.10.dylib in Embed Libraries */,
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		D25C533F2DADE0F100F30C8E /* Xe-Image Convert.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Xe-Image Convert.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D25C53502DADE0F200F30C8E /* Xe-Image ConvertTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Xe-Image ConvertTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D25C535A2DADE0F200F30C8E /* Xe-Image ConvertUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Xe-Image ConvertUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D25C53732DADE4B900F30C8E /* libwebp.7.1.10.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libwebp.7.1.10.dylib; path = /opt/homebrew/opt/webp/lib/libwebp.7.1.10.dylib; sourceTree = "<absolute>"; };
+		D2A367C12DADFC90000313CF /* /opt/homebrew/opt/webp/lib/libwebp.7.1.10.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = /opt/homebrew/opt/webp/lib/libwebp.7.1.10.dylib; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D2A367C72DADFF49000313CF /* Exceptions for "Xe-Image Convert" folder in "Xe-Image Convert" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Frameworks/libwebp.dylib,
+			);
+			target = D25C533E2DADE0F100F30C8E /* Xe-Image Convert */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D25C53412DADE0F100F30C8E /* Xe-Image Convert */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D2A367C72DADFF49000313CF /* Exceptions for "Xe-Image Convert" folder in "Xe-Image Convert" target */,
+			);
 			path = "Xe-Image Convert";
 			sourceTree = "<group>";
 		};
@@ -52,6 +87,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D2A367C42DADFCDA000313CF /* /opt/homebrew/opt/webp/lib/libwebp.7.1.10.dylib in Frameworks */,
+				D25C53742DADE4B900F30C8E /* libwebp.7.1.10.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -75,9 +112,11 @@
 		D25C53362DADE0F100F30C8E = {
 			isa = PBXGroup;
 			children = (
+				D2A367C22DADFC90000313CF /* Frameworks */,
 				D25C53412DADE0F100F30C8E /* Xe-Image Convert */,
 				D25C53532DADE0F200F30C8E /* Xe-Image ConvertTests */,
 				D25C535D2DADE0F200F30C8E /* Xe-Image ConvertUITests */,
+				D25C53722DADE4B900F30C8E /* Frameworks */,
 				D25C53402DADE0F100F30C8E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -92,6 +131,22 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		D25C53722DADE4B900F30C8E /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D25C53732DADE4B900F30C8E /* libwebp.7.1.10.dylib */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		D2A367C22DADFC90000313CF /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D2A367C12DADFC90000313CF /* /opt/homebrew/opt/webp/lib/libwebp.7.1.10.dylib */,
+			);
+			path = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -102,6 +157,7 @@
 				D25C533B2DADE0F100F30C8E /* Sources */,
 				D25C533C2DADE0F100F30C8E /* Frameworks */,
 				D25C533D2DADE0F100F30C8E /* Resources */,
+				D2A367C62DADFCDA000313CF /* Embed Libraries */,
 			);
 			buildRules = (
 			);
@@ -401,15 +457,27 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					/opt/homebrew/include,
+					/opt/homebrew/include,
+				);
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					/opt/homebrew/lib,
+					/opt/homebrew/opt/webp/lib,
+					/opt/homebrew/Cellar/webp/1.5.0/lib,
+					"$(PROJECT_DIR)/Frameworks",
+					"$(PROJECT_DIR)/Xe-Image\\ Convert/Frameworks",
+				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.Xenon-Post.Xe-Image-Convert";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INCLUDE_PATHS = "\"$(SRCROOT)/Xe-Image Convert/Modules\" \"$(SRCROOT)/Xe-Image Convert/Xe-Image Convert/Modules\"";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
@@ -428,15 +496,27 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				HEADER_SEARCH_PATHS = (
+					/opt/homebrew/include,
+					/opt/homebrew/include,
+				);
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					/opt/homebrew/lib,
+					/opt/homebrew/opt/webp/lib,
+					/opt/homebrew/Cellar/webp/1.5.0/lib,
+					"$(PROJECT_DIR)/Frameworks",
+					"$(PROJECT_DIR)/Xe-Image\\ Convert/Frameworks",
+				);
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.Xenon-Post.Xe-Image-Convert";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INCLUDE_PATHS = "\"$(SRCROOT)/Xe-Image Convert/Modules\" \"$(SRCROOT)/Xe-Image Convert/Xe-Image Convert/Modules\"";
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -447,7 +527,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = RR9SSU85FD;
+				DEVELOPMENT_TEAM = "Myles Conti";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
 				MARKETING_VERSION = 1.0;
@@ -465,7 +545,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = RR9SSU85FD;
+				DEVELOPMENT_TEAM = "Myles Conti";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.2;
 				MARKETING_VERSION = 1.0;
@@ -482,7 +562,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = RR9SSU85FD;
+				DEVELOPMENT_TEAM = "Myles Conti";
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.Xenon-Post.Xe-Image-ConvertUITests";
@@ -498,7 +578,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = RR9SSU85FD;
+				DEVELOPMENT_TEAM = "Myles Conti";
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.Xenon-Post.Xe-Image-ConvertUITests";
