@@ -4,6 +4,7 @@ import ImageIO
 import CoreImage
 import CoreGraphics
 import libwebp
+import AVFoundation
 
 struct ContentView: View {
     @State private var droppedURL: URL?
@@ -11,6 +12,7 @@ struct ContentView: View {
     @State private var quality: Double = 0.8
     @State private var suffix: String = "_converted"
     @State private var aspectRatio: AspectRatio = .original
+    @State private var isFitMode: Bool = true  // true = fit, false = fill
     @State private var outputMessage: String = ""
     @State private var destinationURL: URL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
     @State private var isShowingDestinationPicker = false
@@ -94,11 +96,25 @@ struct ContentView: View {
                 }
             }.pickerStyle(SegmentedPickerStyle())
 
-            Picker("Aspect Ratio", selection: $aspectRatio) {
-                ForEach(AspectRatio.allCases, id: \.self) {
-                    Text($0.rawValue)
+            HStack {
+                Picker("Aspect Ratio", selection: $aspectRatio) {
+                    ForEach(AspectRatio.allCases, id: \.self) {
+                        Text($0.rawValue)
+                    }
+                }
+                
+                if aspectRatio != .original {
+                    HStack {
+                        Text(isFitMode ? "Fit" : "Fill")
+                            .frame(width: 30)
+                        Toggle("", isOn: $isFitMode)
+                            .toggleStyle(.switch)
+                            .help(isFitMode ? "Fit: Image maintains its proportions with letterboxing/pillarboxing" : "Fill: Image fills the frame and may be cropped")
+                    }
                 }
             }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal)
 
             HStack {
                 Text("Quality")
@@ -211,54 +227,57 @@ struct ContentView: View {
                     return
                 }
                 
-                guard let cgImage = inputImage.toCGImage() else {
-                    print("Failed to convert NSImage to CGImage")
-                    DispatchQueue.main.async {
-                        self.errorMessage = "Could not process image"
-                        self.isShowingError = true
+                // Process the image according to the selected aspect ratio and fit/fill mode
+                let processedImage: NSImage
+                if aspectRatio == .original {
+                    processedImage = inputImage
+                } else {
+                    let ratio: CGFloat
+                    switch aspectRatio {
+                    case .original:
+                        ratio = inputImage.size.width / inputImage.size.height
+                    case .oneOne:
+                        ratio = 1.0
+                    case .sixteenNine:
+                        ratio = 16.0 / 9.0
+                    case .nineSixteen:
+                        ratio = 9.0 / 16.0
+                    case .twoFour:
+                        ratio = 2.4
+                    case .threeTwo:
+                        ratio = 3.0 / 2.0
+                    case .twoThree:
+                        ratio = 2.0 / 3.0
+                    case .fiveFour:
+                        ratio = 5.0 / 4.0
                     }
+                    processedImage = cropToAspectRatio(inputImage, ratio: ratio)
+                }
+                
+                // Get the CGImage for saving
+                guard let cgImage = processedImage.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+                    print("Failed to create CGImage")
                     return
                 }
-
-                print("Image loaded successfully, dimensions: \(cgImage.width)x\(cgImage.height)")
                 
-                let croppedImage = cropToAspectRatio(cgImage: cgImage, aspect: aspectRatio)
-                print("Image cropped to aspect ratio: \(aspectRatio.rawValue)")
+                // Create output filename
+                let outputFileName = url.deletingPathExtension().lastPathComponent + suffix + "." + outputFormat.rawValue.lowercased()
+                let outputURL = destinationURL.appendingPathComponent(outputFileName)
                 
-                let baseName = url.deletingPathExtension().lastPathComponent + suffix
-                let newURL = destinationURL.appendingPathComponent(baseName).appendingPathExtension(outputFormat.fileExtension)
-                print("Output path: \(newURL.path)")
-
-                do {
-                    switch outputFormat {
-                    case .jpg, .png:
-                        let bitmapRep = NSBitmapImageRep(cgImage: croppedImage)
-                        let props: [NSBitmapImageRep.PropertyKey: Any] = [.compressionFactor: quality]
-                        guard let data = bitmapRep.representation(using: outputFormat.bitmapType, properties: props) else {
-                            print("Failed to create image data")
-                            throw NSError(domain: "ImageConversion", code: 1, userInfo: [NSLocalizedDescriptionKey: "Failed to create image data"])
-                        }
-                        try data.write(to: newURL)
-                        print("Successfully saved \(outputFormat.rawValue) image")
-                        
-                    case .heic:
-                        saveAsHEIC(cgImage: croppedImage, to: newURL, quality: quality)
-                        print("Successfully saved HEIC image")
-                        
-                    case .webp:
-                        saveAsWebP(cgImage: croppedImage, to: newURL, quality: quality)
-                        print("Successfully saved WebP image")
-                    }
-                    
-                    DispatchQueue.main.async {
-                        self.outputMessage = "Successfully saved to \(destinationURL.lastPathComponent): \(newURL.lastPathComponent)"
-                    }
-                } catch {
-                    print("Error during conversion: \(error.localizedDescription)")
-                    DispatchQueue.main.async {
-                        self.errorMessage = error.localizedDescription
-                        self.isShowingError = true
-                    }
+                // Save in the selected format
+                switch outputFormat {
+                case .jpg:
+                    saveAsJPEG(cgImage: cgImage, to: outputURL, quality: quality)
+                case .png:
+                    saveAsPNG(cgImage: cgImage, to: outputURL)
+                case .heic:
+                    saveAsHEIC(cgImage: cgImage, to: outputURL, quality: quality)
+                case .webp:
+                    saveAsWebP(cgImage: cgImage, to: outputURL, quality: quality)
+                }
+                
+                DispatchQueue.main.async {
+                    self.outputMessage = "Saved to: \(outputURL.path)"
                 }
             }
         } catch {
@@ -270,20 +289,86 @@ struct ContentView: View {
         }
     }
 
+    private func saveAsJPEG(cgImage: CGImage, to url: URL, quality: CGFloat) {
+        let bitmapRep = NSBitmapImageRep(cgImage: cgImage)
+        let jpegData = bitmapRep.representation(using: .jpeg, properties: [.compressionFactor: quality])
+        do {
+            try jpegData?.write(to: url)
+        } catch {
+            print("Error saving JPEG: \(error)")
+        }
+    }
+    
+    private func saveAsPNG(cgImage: CGImage, to url: URL) {
+        let bitmapRep = NSBitmapImageRep(cgImage: cgImage)
+        let pngData = bitmapRep.representation(using: .png, properties: [:])
+        do {
+            try pngData?.write(to: url)
+        } catch {
+            print("Error saving PNG: \(error)")
+        }
+    }
+
     private func saveAsHEIC(cgImage: CGImage, to url: URL, quality: CGFloat) {
-        guard let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.heic.identifier as CFString, 1, nil) else {
+        // For HEIC, we always want RGB without alpha
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(
+            data: nil,
+            width: cgImage.width,
+            height: cgImage.height,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+        ) else {
+            print("Failed to create context for HEIC conversion")
+            return
+        }
+        
+        // Fill with black background first
+        context.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 1.0))
+        context.fill(CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height))
+        
+        // Draw the image
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height))
+        
+        guard let processedImage = context.makeImage() else {
+            print("Failed to create new image for HEIC conversion")
+            return
+        }
+        
+        // Set up HEIC encoding properties
+        let properties = [
+            kCGImageDestinationLossyCompressionQuality: quality,
+            kCGImageDestinationOptimizeColorForSharing: true,
+            kCGImagePropertyOrientation: CGImagePropertyOrientation.up.rawValue
+        ] as [CFString : Any]
+        
+        guard let destination = CGImageDestinationCreateWithURL(
+            url as CFURL,
+            "public.heic" as CFString,
+            1,
+            nil
+        ) else {
             print("Failed to create HEIC destination")
             return
         }
         
-        let options: [CFString: Any] = [
+        // Set the encoding properties
+        let destinationProperties = [
             kCGImageDestinationLossyCompressionQuality: quality,
             kCGImageDestinationOptimizeColorForSharing: true
-        ]
+        ] as CFDictionary
+        CGImageDestinationSetProperties(destination, destinationProperties)
         
-        CGImageDestinationAddImage(destination, cgImage, options as CFDictionary)
+        // Add the image with properties
+        CGImageDestinationAddImage(destination, processedImage, properties as CFDictionary)
+        
+        // Finalize
         if !CGImageDestinationFinalize(destination) {
             print("Failed to finalize HEIC image")
+        } else {
+            print("Successfully saved HEIC image")
         }
     }
 
@@ -372,6 +457,99 @@ struct ContentView: View {
 
         let cropRect = CGRect(x: x, y: y, width: newWidth, height: newHeight)
         return cgImage.cropping(to: cropRect) ?? cgImage
+    }
+
+    private func cropToAspectRatio(_ image: NSImage, ratio: CGFloat) -> NSImage {
+        let imageSize = image.size
+        let imageRatio = imageSize.width / imageSize.height
+        
+        // Calculate the target canvas size based on the desired aspect ratio
+        let targetWidth: CGFloat
+        let targetHeight: CGFloat
+        
+        if ratio > 1 {
+            // Target is landscape
+            targetWidth = 3000 // Use a reasonable max size
+            targetHeight = targetWidth / ratio
+        } else {
+            // Target is portrait or square
+            targetHeight = 3000 // Use a reasonable max size
+            targetWidth = targetHeight * ratio
+        }
+        
+        // Calculate the size of the source image within the target canvas
+        var sourceWidth: CGFloat
+        var sourceHeight: CGFloat
+        var xOffset: CGFloat = 0
+        var yOffset: CGFloat = 0
+        
+        if isFitMode {
+            // Fit mode: Scale image to fit within target while maintaining aspect ratio
+            if imageRatio > ratio {
+                // Image is wider than target - fit to width
+                sourceWidth = targetWidth
+                sourceHeight = targetWidth / imageRatio
+                yOffset = (targetHeight - sourceHeight) / 2
+            } else {
+                // Image is taller than target - fit to height
+                sourceHeight = targetHeight
+                sourceWidth = targetHeight * imageRatio
+                xOffset = (targetWidth - sourceWidth) / 2
+            }
+        } else {
+            // Fill mode: Scale image to fill target while maintaining aspect ratio
+            if imageRatio > ratio {
+                // Image is wider than target - crop sides
+                sourceHeight = targetHeight
+                sourceWidth = targetHeight * imageRatio
+                xOffset = (sourceWidth - targetWidth) / 2
+            } else {
+                // Image is taller than target - crop top/bottom
+                sourceWidth = targetWidth
+                sourceHeight = targetWidth / imageRatio
+                yOffset = (sourceHeight - targetHeight) / 2
+            }
+        }
+        
+        // Create the target image
+        let newImage = NSImage(size: NSSize(width: targetWidth, height: targetHeight))
+        newImage.lockFocus()
+        
+        // Fill background
+        if isFitMode {
+            if outputFormat == .png || outputFormat == .webp {
+                NSColor.clear.set()
+            } else {
+                NSColor.black.set()
+            }
+            NSRect(x: 0, y: 0, width: targetWidth, height: targetHeight).fill()
+        }
+        
+        // Calculate source and destination rects
+        var sourceRect = NSRect(x: 0, y: 0, width: imageSize.width, height: imageSize.height)
+        let destRect: NSRect
+        
+        if isFitMode {
+            // In fit mode, place the scaled image with offsets for letterboxing/pillarboxing
+            destRect = NSRect(x: xOffset, y: yOffset, width: sourceWidth, height: sourceHeight)
+        } else {
+            // In fill mode, position the source rect to crop appropriately
+            destRect = NSRect(x: 0, y: 0, width: targetWidth, height: targetHeight)
+            
+            // Adjust source rect for cropping
+            let scaleX = imageSize.width / sourceWidth
+            let scaleY = imageSize.height / sourceHeight
+            let sourceX = xOffset * scaleX
+            let sourceY = yOffset * scaleY
+            sourceRect.origin = CGPoint(x: sourceX, y: sourceY)
+            sourceRect.size = CGSize(width: targetWidth * scaleX, height: targetHeight * scaleY)
+        }
+        
+        // Draw the image
+        image.draw(in: destRect, from: sourceRect, operation: .sourceOver, fraction: 1.0)
+        newImage.unlockFocus()
+        
+        return newImage
     }
 }
 
