@@ -75,203 +75,283 @@ enum OutputSize: String, CaseIterable {
 }
 
 struct ContentView: View {
-    @State private var droppedURL: URL?
+    @State private var droppedURLs: [URL] = []
     @State private var outputFormat: ImageFormat = .jpg
     @State private var quality: Double = 0.8
-    @State private var suffix: String = "_converted"
+    @State private var suffix: String = ""
     @State private var aspectRatio: AspectRatio = .original
-    @State private var isFitMode: Bool = true  // true = fit, false = fill
+    @State private var isFitMode: Bool = true
     @State private var outputSize: OutputSize = .automatic
     @State private var outputMessage: String = ""
+    @State private var errorMessage: String = ""
+    @State private var isShowingError: Bool = false
     @State private var destinationURL: URL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
-    @State private var isShowingDestinationPicker = false
-    @State private var isConverting = false
-    @State private var isShowingError = false
-    @State private var errorMessage = ""
-    @State private var previewImage: NSImage?
-    @State private var destinationBookmark: Data?
+    @State private var isProcessing: Bool = false
+    @State private var processedCount: Int = 0
+    @State private var totalCount: Int = 0
 
     var body: some View {
         VStack(spacing: 20) {
-            ZStack {
-                if let image = previewImage {
-                    Image(nsImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 300, height: 200)
-                        .cornerRadius(10)
-                } else {
-                    Text("Drop Image Here")
-                        .frame(width: 300, height: 200)
-                        .background(Color.gray.opacity(0.2))
-                        .cornerRadius(10)
-                }
-            }
-            .onDrop(of: [UTType.image], isTargeted: nil) { providers in
-                if let provider = providers.first {
-                    provider.loadItem(forTypeIdentifier: UTType.image.identifier, options: nil) { (item, _) in
-                        if let url = item as? URL {
-                            DispatchQueue.main.async {
-                                self.droppedURL = url
-                                // Try to load the preview image
-                                if let image = NSImage(contentsOf: url) {
-                                    self.previewImage = image
-                                } else {
-                                    // If direct loading fails, try using a bookmark
-                                    do {
-                                        let bookmarkData = try url.bookmarkData(
-                                            options: .withSecurityScope,
-                                            includingResourceValuesForKeys: nil,
-                                            relativeTo: nil
-                                        )
-                                        var isStale = false
-                                        if let resolvedURL = try? URL(resolvingBookmarkData: bookmarkData,
-                                                                    options: .withSecurityScope,
-                                                                    relativeTo: nil,
-                                                                    bookmarkDataIsStale: &isStale) {
-                                            if resolvedURL.startAccessingSecurityScopedResource() {
-                                                defer { resolvedURL.stopAccessingSecurityScopedResource() }
-                                                if let image = NSImage(contentsOf: resolvedURL) {
-                                                    self.previewImage = image
+            // Drop zone section
+            GroupBox {
+                VStack(spacing: 16) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.gray.opacity(0.3))
+                            .frame(height: 150)
+                        
+                        if droppedURLs.isEmpty {
+                            VStack(spacing: 12) {
+                                Image("DropZoneImage")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(height: 80)
+                                Text("Drop images here")
+                                    .foregroundColor(.gray)
+                            }
+                        } else {
+                            VStack(spacing: 12) {
+                                Text("\(droppedURLs.count) image\(droppedURLs.count == 1 ? "" : "s") selected")
+                                    .font(.headline)
+                                
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 10) {
+                                        ForEach(droppedURLs, id: \.self) { url in
+                                            VStack(spacing: 4) {
+                                                if let image = NSImage(contentsOf: url) {
+                                                    Image(nsImage: image)
+                                                        .resizable()
+                                                        .scaledToFit()
+                                                        .frame(height: 80)
+                                                        .cornerRadius(4)
                                                 }
+                                                Text(url.lastPathComponent)
+                                                    .font(.caption)
+                                                    .lineLimit(1)
                                             }
                                         }
-                                    } catch {
-                                        print("Error creating bookmark: \(error)")
+                                    }
+                                    .padding(.horizontal, 4)
+                                }
+                                
+                                if isProcessing {
+                                    ProgressView(value: Double(processedCount), total: Double(totalCount)) {
+                                        Text("Processing \(processedCount)/\(totalCount)")
+                                            .font(.subheadline)
                                     }
                                 }
                             }
-                        } else if let data = item as? Data,
-                                  let image = NSImage(data: data) {
-                            DispatchQueue.main.async {
-                                self.previewImage = image
+                        }
+                    }
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .onDrop(of: [.fileURL], isTargeted: nil) { providers in
+                    let dispatchGroup = DispatchGroup()
+                    var urls: [URL] = []
+                    
+                    for provider in providers {
+                        dispatchGroup.enter()
+                        _ = provider.loadObject(ofClass: URL.self) { url, error in
+                            defer { dispatchGroup.leave() }
+                            guard error == nil, let url = url else { return }
+                            
+                            // Only accept image files
+                            let supportedExtensions = ["jpg", "jpeg", "png", "heic", "webp"]
+                            if supportedExtensions.contains(url.pathExtension.lowercased()) {
+                                urls.append(url)
                             }
                         }
                     }
+                    
+                    dispatchGroup.notify(queue: .main) {
+                        droppedURLs.append(contentsOf: urls)
+                    }
                     return true
                 }
-                return false
             }
-
-            if let url = droppedURL {
-                Text(url.lastPathComponent)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Picker("Format", selection: $outputFormat) {
-                ForEach(ImageFormat.allCases, id: \.self) {
-                    Text($0.rawValue)
-                }
-            }.pickerStyle(SegmentedPickerStyle())
-
-            HStack {
-                Picker("Aspect Ratio", selection: $aspectRatio) {
-                    ForEach(AspectRatio.allCases, id: \.self) {
-                        Text($0.rawValue)
+            
+            // Settings section
+            GroupBox {
+                VStack(spacing: 16) {
+                    // Format and Quality
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Output Format")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        HStack(spacing: 16) {
+                            Picker("Format", selection: $outputFormat) {
+                                ForEach(ImageFormat.allCases, id: \.self) {
+                                    Text($0.rawValue.uppercased())
+                                }
+                            }
+                            .frame(width: 150)
+                            
+                            if outputFormat == .jpg || outputFormat == .heic || outputFormat == .webp {
+                                HStack(spacing: 8) {
+                                    Slider(value: $quality, in: 0...1) {
+                                        Text("Quality")
+                                    }
+                                    .frame(maxWidth: 120)
+                                    
+                                    Text("\(Int(quality * 100))%")
+                                        .frame(width: 45)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    // Aspect Ratio and Size
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Dimensions")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        VStack(spacing: 12) {
+                            HStack {
+                                Picker("Aspect Ratio", selection: $aspectRatio) {
+                                    ForEach(AspectRatio.allCases, id: \.self) {
+                                        Text($0.rawValue)
+                                    }
+                                }
+                                .disabled(outputSize.isFixedAspectRatio)
+                                
+                                if aspectRatio != .original {
+                                    HStack {
+                                        Text(isFitMode ? "Fit" : "Fill")
+                                            .frame(width: 30)
+                                        Toggle("", isOn: $isFitMode)
+                                            .toggleStyle(.switch)
+                                            .help(isFitMode ? "Fit: Image maintains its proportions with letterboxing/pillarboxing" : "Fill: Image fills the frame and may be cropped")
+                                    }
+                                }
+                            }
+                            
+                            if aspectRatio != .original {
+                                Picker("Output Size", selection: $outputSize) {
+                                    ForEach(OutputSize.availableSizes(for: aspectRatio), id: \.self) { size in
+                                        Text(size.rawValue)
+                                    }
+                                }
+                                .pickerStyle(SegmentedPickerStyle())
+                                .onChange(of: aspectRatio) { newRatio in
+                                    if !OutputSize.availableSizes(for: newRatio).contains(outputSize) {
+                                        outputSize = .automatic
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    // Output Settings
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Output Settings")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        VStack(spacing: 12) {
+                            HStack {
+                                TextField("Suffix", text: $suffix)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .frame(maxWidth: 200)
+                                Text("Will be added to filename")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Button(action: {
+                                        let panel = NSOpenPanel()
+                                        panel.canChooseFiles = false
+                                        panel.canChooseDirectories = true
+                                        panel.allowsMultipleSelection = false
+                                        
+                                        if panel.runModal() == .OK {
+                                            destinationURL = panel.url!
+                                        }
+                                    }) {
+                                        Text("Select Output Folder")
+                                    }
+                                    
+                                    Text("•")
+                                        .foregroundColor(.secondary)
+                                    
+                                    Text(destinationURL.path)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
                     }
                 }
-                .disabled(outputSize.isFixedAspectRatio)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+            }
+            
+            // Convert Button and Status
+            VStack(spacing: 8) {
+                Button(action: {
+                    processImages()
+                }) {
+                    if isProcessing {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Text("Convert")
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(droppedURLs.isEmpty || isProcessing)
                 
-                if aspectRatio != .original {
-                    HStack {
-                        Text(isFitMode ? "Fit" : "Fill")
-                            .frame(width: 30)
-                        Toggle("", isOn: $isFitMode)
-                            .toggleStyle(.switch)
-                            .help(isFitMode ? "Fit: Image maintains its proportions with letterboxing/pillarboxing" : "Fill: Image fills the frame and may be cropped")
-                    }
+                if !outputMessage.isEmpty {
+                    Text(outputMessage)
+                        .font(.caption)
+                        .foregroundColor(.green)
                 }
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal)
-
-            if aspectRatio != .original {
-                Picker("Output Size", selection: $outputSize) {
-                    ForEach(OutputSize.availableSizes(for: aspectRatio), id: \.self) { size in
-                        Text(size.rawValue)
-                    }
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                .onChange(of: aspectRatio) { newRatio in
-                    // Reset to automatic if current size isn't available for new ratio
-                    if !OutputSize.availableSizes(for: newRatio).contains(outputSize) {
-                        outputSize = .automatic
-                    }
-                }
-            }
-
-            HStack {
-                Text("Quality")
-                Slider(value: $quality, in: 0.1...1.0)
-            }
-
-            TextField("Filename Suffix", text: $suffix)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .frame(width: 200)
-
-            HStack {
-                Button("Choose Destination") {
-                    isShowingDestinationPicker = true
-                }
-                .buttonStyle(.bordered)
-                
-                Text(destinationURL.lastPathComponent)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-
-            Button(action: {
-                if let url = droppedURL {
-                    isConverting = true
-                    convertImage(at: url)
-                    isConverting = false
-                }
-            }) {
-                Text("Convert")
-                    .frame(width: 100)
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(droppedURL == nil || isConverting)
-
-            if !outputMessage.isEmpty {
-                Text(outputMessage)
-                    .font(.caption)
-                    .foregroundColor(.green)
             }
         }
-        .padding()
-        .fileImporter(
-            isPresented: $isShowingDestinationPicker,
-            allowedContentTypes: [.folder],
-            allowsMultipleSelection: false
-        ) { result in
-            switch result {
-            case .success(let urls):
-                if let url = urls.first {
-                    do {
-                        // Create a security-scoped bookmark for the destination folder
-                        let bookmarkData = try url.bookmarkData(
-                            options: .withSecurityScope,
-                            includingResourceValuesForKeys: nil,
-                            relativeTo: nil
-                        )
-                        self.destinationBookmark = bookmarkData
-                        self.destinationURL = url
-                    } catch {
-                        errorMessage = "Error saving destination: \(error.localizedDescription)"
-                        isShowingError = true
-                    }
-                }
-            case .failure(let error):
-                errorMessage = "Error selecting destination: \(error.localizedDescription)"
-                isShowingError = true
-            }
-        }
+        .padding(20)
+        .frame(width: 700, height: 680)
+        .fixedSize(horizontal: true, vertical: true)
         .alert("Error", isPresented: $isShowingError) {
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {}
         } message: {
             Text(errorMessage)
+        }
+    }
+    
+    private func processImages() {
+        guard !droppedURLs.isEmpty else { return }
+        
+        isProcessing = true
+        processedCount = 0
+        totalCount = droppedURLs.count
+        outputMessage = ""
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            for url in droppedURLs {
+                convertImage(at: url)
+                DispatchQueue.main.async {
+                    processedCount += 1
+                }
+            }
+            
+            DispatchQueue.main.async {
+                isProcessing = false
+                outputMessage = "Processed \(processedCount) images"
+                droppedURLs.removeAll()
+            }
         }
     }
 
