@@ -6,6 +6,74 @@ import CoreGraphics
 import libwebp
 import AVFoundation
 
+// Add this before the ContentView struct
+enum OutputSize: String, CaseIterable {
+    case automatic = "Automatic"
+    case size1K = "1000px"
+    case size2K = "2000px"
+    case size3K = "3000px"
+    case size4K = "4000px"
+    case hdLandscape = "HD (1920×1080)"
+    case hdPortrait = "HD (1080×1920)"
+    case uhdLandscape = "UHD (3840×2160)"
+    case uhdPortrait = "UHD (2160×3840)"
+    
+    var dimensions: (width: Int, height: Int)? {
+        switch self {
+        case .automatic: return nil
+        case .size1K: return (1000, 1000)
+        case .size2K: return (2000, 2000)
+        case .size3K: return (3000, 3000)
+        case .size4K: return (4000, 4000)
+        case .hdLandscape: return (1920, 1080)
+        case .hdPortrait: return (1080, 1920)
+        case .uhdLandscape: return (3840, 2160)
+        case .uhdPortrait: return (2160, 3840)
+        }
+    }
+    
+    var pixels: Int? {
+        switch self {
+        case .automatic: return nil
+        case .size1K: return 1000
+        case .size2K: return 2000
+        case .size3K: return 3000
+        case .size4K: return 4000
+        case .hdLandscape: return 1920
+        case .hdPortrait: return 1080
+        case .uhdLandscape: return 3840
+        case .uhdPortrait: return 2160
+        }
+    }
+    
+    var isFixedAspectRatio: Bool {
+        switch self {
+        case .automatic, .size1K, .size2K, .size3K, .size4K:
+            return false
+        case .hdLandscape, .hdPortrait, .uhdLandscape, .uhdPortrait:
+            return true
+        }
+    }
+    
+    var aspectRatio: CGFloat? {
+        guard let dims = dimensions else { return nil }
+        return CGFloat(dims.width) / CGFloat(dims.height)
+    }
+    
+    static func availableSizes(for aspectRatio: AspectRatio) -> [OutputSize] {
+        switch aspectRatio {
+        case .sixteenNine:
+            return [.automatic, .size1K, .size2K, .size3K, .size4K, .hdLandscape, .uhdLandscape]
+        case .nineSixteen:
+            return [.automatic, .size1K, .size2K, .size3K, .size4K, .hdPortrait, .uhdPortrait]
+        case .original:
+            return [.automatic]
+        default:
+            return [.automatic, .size1K, .size2K, .size3K, .size4K]
+        }
+    }
+}
+
 struct ContentView: View {
     @State private var droppedURL: URL?
     @State private var outputFormat: ImageFormat = .jpg
@@ -13,6 +81,7 @@ struct ContentView: View {
     @State private var suffix: String = "_converted"
     @State private var aspectRatio: AspectRatio = .original
     @State private var isFitMode: Bool = true  // true = fit, false = fill
+    @State private var outputSize: OutputSize = .automatic
     @State private var outputMessage: String = ""
     @State private var destinationURL: URL = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
     @State private var isShowingDestinationPicker = false
@@ -102,6 +171,7 @@ struct ContentView: View {
                         Text($0.rawValue)
                     }
                 }
+                .disabled(outputSize.isFixedAspectRatio)
                 
                 if aspectRatio != .original {
                     HStack {
@@ -115,6 +185,21 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.horizontal)
+
+            if aspectRatio != .original {
+                Picker("Output Size", selection: $outputSize) {
+                    ForEach(OutputSize.availableSizes(for: aspectRatio), id: \.self) { size in
+                        Text(size.rawValue)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .onChange(of: aspectRatio) { newRatio in
+                    // Reset to automatic if current size isn't available for new ratio
+                    if !OutputSize.availableSizes(for: newRatio).contains(outputSize) {
+                        outputSize = .automatic
+                    }
+                }
+            }
 
             HStack {
                 Text("Quality")
@@ -251,7 +336,16 @@ struct ContentView: View {
                     case .fiveFour:
                         ratio = 5.0 / 4.0
                     }
+                    
+                    // Print debug information
+                    print("Input image size: \(inputImage.size)")
+                    print("Target ratio: \(ratio)")
+                    print("Selected size: \(outputSize.pixels ?? 0)")
+                    
                     processedImage = cropToAspectRatio(inputImage, ratio: ratio)
+                    
+                    // Print processed image size
+                    print("Processed image size: \(processedImage.size)")
                 }
                 
                 // Get the CGImage for saving
@@ -259,6 +353,9 @@ struct ContentView: View {
                     print("Failed to create CGImage")
                     return
                 }
+                
+                // Print final CGImage dimensions
+                print("Final CGImage dimensions: \(cgImage.width) x \(cgImage.height)")
                 
                 // Create output filename
                 let outputFileName = url.deletingPathExtension().lastPathComponent + suffix + "." + outputFormat.rawValue.lowercased()
@@ -463,57 +560,54 @@ struct ContentView: View {
         let imageSize = image.size
         let imageRatio = imageSize.width / imageSize.height
         
-        // Calculate the target canvas size based on the desired aspect ratio
+        // Calculate target dimensions based on output size setting
         let targetWidth: CGFloat
         let targetHeight: CGFloat
         
-        if ratio > 1 {
-            // Target is landscape
-            targetWidth = 3000 // Use a reasonable max size
-            targetHeight = targetWidth / ratio
-        } else {
-            // Target is portrait or square
-            targetHeight = 3000 // Use a reasonable max size
-            targetWidth = targetHeight * ratio
-        }
-        
-        // Calculate the size of the source image within the target canvas
-        var sourceWidth: CGFloat
-        var sourceHeight: CGFloat
-        var xOffset: CGFloat = 0
-        var yOffset: CGFloat = 0
-        
-        if isFitMode {
-            // Fit mode: Scale image to fit within target while maintaining aspect ratio
-            if imageRatio > ratio {
-                // Image is wider than target - fit to width
-                sourceWidth = targetWidth
-                sourceHeight = targetWidth / imageRatio
-                yOffset = (targetHeight - sourceHeight) / 2
+        if let dimensions = outputSize.dimensions {
+            // Fixed dimensions mode (HD/UHD)
+            targetWidth = CGFloat(dimensions.width)
+            targetHeight = CGFloat(dimensions.height)
+        } else if let maxDimension = outputSize.pixels {
+            // Fixed size mode - ensure the longest side matches the requested size exactly
+            if ratio > 1 {
+                // Target is landscape, width should be maxDimension
+                targetWidth = CGFloat(maxDimension)
+                targetHeight = round(targetWidth / ratio)
             } else {
-                // Image is taller than target - fit to height
-                sourceHeight = targetHeight
-                sourceWidth = targetHeight * imageRatio
-                xOffset = (targetWidth - sourceWidth) / 2
+                // Target is portrait or square, height should be maxDimension
+                targetHeight = CGFloat(maxDimension)
+                targetWidth = round(targetHeight * ratio)
             }
         } else {
-            // Fill mode: Scale image to fill target while maintaining aspect ratio
-            if imageRatio > ratio {
-                // Image is wider than target - crop sides
-                sourceHeight = targetHeight
-                sourceWidth = targetHeight * imageRatio
-                xOffset = (sourceWidth - targetWidth) / 2
+            // Automatic mode - use input image dimensions
+            if ratio > 1 {
+                targetWidth = imageSize.width
+                targetHeight = round(targetWidth / ratio)
             } else {
-                // Image is taller than target - crop top/bottom
-                sourceWidth = targetWidth
-                sourceHeight = targetWidth / imageRatio
-                yOffset = (sourceHeight - targetHeight) / 2
+                targetHeight = imageSize.height
+                targetWidth = round(targetHeight * ratio)
             }
         }
         
-        // Create the target image
-        let newImage = NSImage(size: NSSize(width: targetWidth, height: targetHeight))
-        newImage.lockFocus()
+        // Create a bitmap representation with exact pixel dimensions
+        let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: Int(targetWidth),
+            pixelsHigh: Int(targetHeight),
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0)!
+        
+        rep.size = NSSize(width: targetWidth, height: targetHeight)
+        
+        // Draw into the bitmap representation
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
         
         // Fill background
         if isFitMode {
@@ -530,24 +624,48 @@ struct ContentView: View {
         let destRect: NSRect
         
         if isFitMode {
-            // In fit mode, place the scaled image with offsets for letterboxing/pillarboxing
-            destRect = NSRect(x: xOffset, y: yOffset, width: sourceWidth, height: sourceHeight)
+            // Fit mode: Scale image to fit within target while maintaining aspect ratio
+            if imageRatio > ratio {
+                // Image is wider than target - fit to width
+                let sourceWidth = targetWidth
+                let sourceHeight = targetWidth / imageRatio
+                let yOffset = (targetHeight - sourceHeight) / 2
+                destRect = NSRect(x: 0, y: yOffset, width: sourceWidth, height: sourceHeight)
+            } else {
+                // Image is taller than target - fit to height
+                let sourceHeight = targetHeight
+                let sourceWidth = targetHeight * imageRatio
+                let xOffset = (targetWidth - sourceWidth) / 2
+                destRect = NSRect(x: xOffset, y: 0, width: sourceWidth, height: sourceHeight)
+            }
         } else {
-            // In fill mode, position the source rect to crop appropriately
+            // Fill mode: Scale image to fill target while maintaining aspect ratio
+            if imageRatio > ratio {
+                // Image is wider than target - crop sides
+                let sourceHeight = targetHeight
+                let sourceWidth = targetHeight * imageRatio
+                let xOffset = (sourceWidth - targetWidth) / 2
+                sourceRect.origin.x = xOffset * (imageSize.width / sourceWidth)
+                sourceRect.size.width = targetWidth * (imageSize.width / sourceWidth)
+            } else {
+                // Image is taller than target - crop top/bottom
+                let sourceWidth = targetWidth
+                let sourceHeight = targetWidth / imageRatio
+                let yOffset = (sourceHeight - targetHeight) / 2
+                sourceRect.origin.y = yOffset * (imageSize.height / sourceHeight)
+                sourceRect.size.height = targetHeight * (imageSize.height / sourceHeight)
+            }
             destRect = NSRect(x: 0, y: 0, width: targetWidth, height: targetHeight)
-            
-            // Adjust source rect for cropping
-            let scaleX = imageSize.width / sourceWidth
-            let scaleY = imageSize.height / sourceHeight
-            let sourceX = xOffset * scaleX
-            let sourceY = yOffset * scaleY
-            sourceRect.origin = CGPoint(x: sourceX, y: sourceY)
-            sourceRect.size = CGSize(width: targetWidth * scaleX, height: targetHeight * scaleY)
         }
         
         // Draw the image
         image.draw(in: destRect, from: sourceRect, operation: .sourceOver, fraction: 1.0)
-        newImage.unlockFocus()
+        
+        NSGraphicsContext.restoreGraphicsState()
+        
+        // Create a new NSImage with the bitmap representation
+        let newImage = NSImage(size: NSSize(width: targetWidth, height: targetHeight))
+        newImage.addRepresentation(rep)
         
         return newImage
     }
