@@ -7,47 +7,47 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		FD106FFB2DBFAB75007146C1 /* PhotoshopReader in Frameworks */ = {isa = PBXBuildFile; productRef = FD106FFA2DBFAB75007146C1 /* PhotoshopReader */; };
-		FD1070002DBFB2B8007146C1 /* SDWebImage in Frameworks */ = {isa = PBXBuildFile; productRef = FD106FFF2DBFB2B8007146C1 /* SDWebImage */; };
-		FD1070022DBFB2B8007146C1 /* SDWebImageMapKit in Frameworks */ = {isa = PBXBuildFile; productRef = FD1070012DBFB2B8007146C1 /* SDWebImageMapKit */; };
-		FD1070052DBFB2DF007146C1 /* SDWebImageWebPCoder in Frameworks */ = {isa = PBXBuildFile; productRef = FD1070042DBFB2DF007146C1 /* SDWebImageWebPCoder */; };
+		FDA951582DC06DF4004BC5D9 /* SDWebImageWebPCoder in Frameworks */ = {isa = PBXBuildFile; productRef = FDA951572DC06DF4004BC5D9 /* SDWebImageWebPCoder */; };
+		FDA9515B2DC06E03004BC5D9 /* SDWebImage in Frameworks */ = {isa = PBXBuildFile; productRef = FDA9515A2DC06E03004BC5D9 /* SDWebImage */; };
+		FDA9515D2DC06E03004BC5D9 /* SDWebImageMapKit in Frameworks */ = {isa = PBXBuildFile; productRef = FDA9515C2DC06E03004BC5D9 /* SDWebImageMapKit */; };
+		FDA951602DC06E0E004BC5D9 /* PhotoshopReader in Frameworks */ = {isa = PBXBuildFile; productRef = FDA9515F2DC06E0E004BC5D9 /* PhotoshopReader */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		FD106FDB2DBFA3EB007146C1 /* PBXContainerItemProxy */ = {
+		FD6E04112DC0588D004B56AA /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = FD106FC42DBFA3EA007146C1 /* Project object */;
+			containerPortal = FD6E03FA2DC0588C004B56AA /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = FD106FCB2DBFA3EA007146C1;
+			remoteGlobalIDString = FD6E04012DC0588C004B56AA;
 			remoteInfo = "Xe-Image Convert";
 		};
-		FD106FE52DBFA3EB007146C1 /* PBXContainerItemProxy */ = {
+		FD6E041B2DC0588D004B56AA /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = FD106FC42DBFA3EA007146C1 /* Project object */;
+			containerPortal = FD6E03FA2DC0588C004B56AA /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = FD106FCB2DBFA3EA007146C1;
+			remoteGlobalIDString = FD6E04012DC0588C004B56AA;
 			remoteInfo = "Xe-Image Convert";
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		FD106FCC2DBFA3EA007146C1 /* Xe-Image Convert.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Xe-Image Convert.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		FD106FDA2DBFA3EB007146C1 /* Xe-Image ConvertTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Xe-Image ConvertTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		FD106FE42DBFA3EB007146C1 /* Xe-Image ConvertUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Xe-Image ConvertUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		FD6E04022DC0588C004B56AA /* Xe-Image Convert.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Xe-Image Convert.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		FD6E04102DC0588D004B56AA /* Xe-Image ConvertTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Xe-Image ConvertTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		FD6E041A2DC0588D004B56AA /* Xe-Image ConvertUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Xe-Image ConvertUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		FD106FCE2DBFA3EA007146C1 /* Xe-Image Convert */ = {
+		FD6E04042DC0588C004B56AA /* Xe-Image Convert */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Xe-Image Convert";
 			sourceTree = "<group>";
 		};
-		FD106FDD2DBFA3EB007146C1 /* Xe-Image ConvertTests */ = {
+		FD6E04132DC0588D004B56AA /* Xe-Image ConvertTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Xe-Image ConvertTests";
 			sourceTree = "<group>";
 		};
-		FD106FE72DBFA3EB007146C1 /* Xe-Image ConvertUITests */ = {
+		FD6E041D2DC0588D004B56AA /* Xe-Image ConvertUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Xe-Image ConvertUITests";
 			sourceTree = "<group>";
@@ -55,25 +55,25 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		FD106FC92DBFA3EA007146C1 /* Frameworks */ = {
+		FD6E03FF2DC0588C004B56AA /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				FD1070002DBFB2B8007146C1 /* SDWebImage in Frameworks */,
-				FD1070022DBFB2B8007146C1 /* SDWebImageMapKit in Frameworks */,
-				FD1070052DBFB2DF007146C1 /* SDWebImageWebPCoder in Frameworks */,
-				FD106FFB2DBFAB75007146C1 /* PhotoshopReader in Frameworks */,
+				FDA9515B2DC06E03004BC5D9 /* SDWebImage in Frameworks */,
+				FDA9515D2DC06E03004BC5D9 /* SDWebImageMapKit in Frameworks */,
+				FDA951602DC06E0E004BC5D9 /* PhotoshopReader in Frameworks */,
+				FDA951582DC06DF4004BC5D9 /* SDWebImageWebPCoder in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FD106FD72DBFA3EB007146C1 /* Frameworks */ = {
+		FD6E040D2DC0588D004B56AA /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FD106FE12DBFA3EB007146C1 /* Frameworks */ = {
+		FD6E04172DC0588D004B56AA /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -83,22 +83,22 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		FD106FC32DBFA3EA007146C1 = {
+		FD6E03F92DC0588C004B56AA = {
 			isa = PBXGroup;
 			children = (
-				FD106FCE2DBFA3EA007146C1 /* Xe-Image Convert */,
-				FD106FDD2DBFA3EB007146C1 /* Xe-Image ConvertTests */,
-				FD106FE72DBFA3EB007146C1 /* Xe-Image ConvertUITests */,
-				FD106FCD2DBFA3EA007146C1 /* Products */,
+				FD6E04042DC0588C004B56AA /* Xe-Image Convert */,
+				FD6E04132DC0588D004B56AA /* Xe-Image ConvertTests */,
+				FD6E041D2DC0588D004B56AA /* Xe-Image ConvertUITests */,
+				FD6E04032DC0588C004B56AA /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		FD106FCD2DBFA3EA007146C1 /* Products */ = {
+		FD6E04032DC0588C004B56AA /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				FD106FCC2DBFA3EA007146C1 /* Xe-Image Convert.app */,
-				FD106FDA2DBFA3EB007146C1 /* Xe-Image ConvertTests.xctest */,
-				FD106FE42DBFA3EB007146C1 /* Xe-Image ConvertUITests.xctest */,
+				FD6E04022DC0588C004B56AA /* Xe-Image Convert.app */,
+				FD6E04102DC0588D004B56AA /* Xe-Image ConvertTests.xctest */,
+				FD6E041A2DC0588D004B56AA /* Xe-Image ConvertUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -106,143 +106,143 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		FD106FCB2DBFA3EA007146C1 /* Xe-Image Convert */ = {
+		FD6E04012DC0588C004B56AA /* Xe-Image Convert */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = FD106FEE2DBFA3EB007146C1 /* Build configuration list for PBXNativeTarget "Xe-Image Convert" */;
+			buildConfigurationList = FD6E04242DC0588D004B56AA /* Build configuration list for PBXNativeTarget "Xe-Image Convert" */;
 			buildPhases = (
-				FD106FC82DBFA3EA007146C1 /* Sources */,
-				FD106FC92DBFA3EA007146C1 /* Frameworks */,
-				FD106FCA2DBFA3EA007146C1 /* Resources */,
+				FD6E03FE2DC0588C004B56AA /* Sources */,
+				FD6E03FF2DC0588C004B56AA /* Frameworks */,
+				FD6E04002DC0588C004B56AA /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				FD106FCE2DBFA3EA007146C1 /* Xe-Image Convert */,
+				FD6E04042DC0588C004B56AA /* Xe-Image Convert */,
 			);
 			name = "Xe-Image Convert";
 			packageProductDependencies = (
-				FD106FFA2DBFAB75007146C1 /* PhotoshopReader */,
-				FD106FFF2DBFB2B8007146C1 /* SDWebImage */,
-				FD1070012DBFB2B8007146C1 /* SDWebImageMapKit */,
-				FD1070042DBFB2DF007146C1 /* SDWebImageWebPCoder */,
+				FDA951572DC06DF4004BC5D9 /* SDWebImageWebPCoder */,
+				FDA9515A2DC06E03004BC5D9 /* SDWebImage */,
+				FDA9515C2DC06E03004BC5D9 /* SDWebImageMapKit */,
+				FDA9515F2DC06E0E004BC5D9 /* PhotoshopReader */,
 			);
 			productName = "Xe-Image Convert";
-			productReference = FD106FCC2DBFA3EA007146C1 /* Xe-Image Convert.app */;
+			productReference = FD6E04022DC0588C004B56AA /* Xe-Image Convert.app */;
 			productType = "com.apple.product-type.application";
 		};
-		FD106FD92DBFA3EB007146C1 /* Xe-Image ConvertTests */ = {
+		FD6E040F2DC0588D004B56AA /* Xe-Image ConvertTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = FD106FF12DBFA3EB007146C1 /* Build configuration list for PBXNativeTarget "Xe-Image ConvertTests" */;
+			buildConfigurationList = FD6E04272DC0588D004B56AA /* Build configuration list for PBXNativeTarget "Xe-Image ConvertTests" */;
 			buildPhases = (
-				FD106FD62DBFA3EB007146C1 /* Sources */,
-				FD106FD72DBFA3EB007146C1 /* Frameworks */,
-				FD106FD82DBFA3EB007146C1 /* Resources */,
+				FD6E040C2DC0588D004B56AA /* Sources */,
+				FD6E040D2DC0588D004B56AA /* Frameworks */,
+				FD6E040E2DC0588D004B56AA /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				FD106FDC2DBFA3EB007146C1 /* PBXTargetDependency */,
+				FD6E04122DC0588D004B56AA /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				FD106FDD2DBFA3EB007146C1 /* Xe-Image ConvertTests */,
+				FD6E04132DC0588D004B56AA /* Xe-Image ConvertTests */,
 			);
 			name = "Xe-Image ConvertTests";
 			packageProductDependencies = (
 			);
 			productName = "Xe-Image ConvertTests";
-			productReference = FD106FDA2DBFA3EB007146C1 /* Xe-Image ConvertTests.xctest */;
+			productReference = FD6E04102DC0588D004B56AA /* Xe-Image ConvertTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		FD106FE32DBFA3EB007146C1 /* Xe-Image ConvertUITests */ = {
+		FD6E04192DC0588D004B56AA /* Xe-Image ConvertUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = FD106FF42DBFA3EB007146C1 /* Build configuration list for PBXNativeTarget "Xe-Image ConvertUITests" */;
+			buildConfigurationList = FD6E042A2DC0588D004B56AA /* Build configuration list for PBXNativeTarget "Xe-Image ConvertUITests" */;
 			buildPhases = (
-				FD106FE02DBFA3EB007146C1 /* Sources */,
-				FD106FE12DBFA3EB007146C1 /* Frameworks */,
-				FD106FE22DBFA3EB007146C1 /* Resources */,
+				FD6E04162DC0588D004B56AA /* Sources */,
+				FD6E04172DC0588D004B56AA /* Frameworks */,
+				FD6E04182DC0588D004B56AA /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				FD106FE62DBFA3EB007146C1 /* PBXTargetDependency */,
+				FD6E041C2DC0588D004B56AA /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				FD106FE72DBFA3EB007146C1 /* Xe-Image ConvertUITests */,
+				FD6E041D2DC0588D004B56AA /* Xe-Image ConvertUITests */,
 			);
 			name = "Xe-Image ConvertUITests";
 			packageProductDependencies = (
 			);
 			productName = "Xe-Image ConvertUITests";
-			productReference = FD106FE42DBFA3EB007146C1 /* Xe-Image ConvertUITests.xctest */;
+			productReference = FD6E041A2DC0588D004B56AA /* Xe-Image ConvertUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		FD106FC42DBFA3EA007146C1 /* Project object */ = {
+		FD6E03FA2DC0588C004B56AA /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1630;
 				LastUpgradeCheck = 1630;
 				TargetAttributes = {
-					FD106FCB2DBFA3EA007146C1 = {
+					FD6E04012DC0588C004B56AA = {
 						CreatedOnToolsVersion = 16.3;
 					};
-					FD106FD92DBFA3EB007146C1 = {
+					FD6E040F2DC0588D004B56AA = {
 						CreatedOnToolsVersion = 16.3;
-						TestTargetID = FD106FCB2DBFA3EA007146C1;
+						TestTargetID = FD6E04012DC0588C004B56AA;
 					};
-					FD106FE32DBFA3EB007146C1 = {
+					FD6E04192DC0588D004B56AA = {
 						CreatedOnToolsVersion = 16.3;
-						TestTargetID = FD106FCB2DBFA3EA007146C1;
+						TestTargetID = FD6E04012DC0588C004B56AA;
 					};
 				};
 			};
-			buildConfigurationList = FD106FC72DBFA3EA007146C1 /* Build configuration list for PBXProject "Xe-Image Convert" */;
+			buildConfigurationList = FD6E03FD2DC0588C004B56AA /* Build configuration list for PBXProject "Xe-Image Convert" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
 			);
-			mainGroup = FD106FC32DBFA3EA007146C1;
+			mainGroup = FD6E03F92DC0588C004B56AA;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				FD106FF92DBFAB75007146C1 /* XCRemoteSwiftPackageReference "PhotoshopReader" */,
-				FD106FFE2DBFB2B8007146C1 /* XCRemoteSwiftPackageReference "SDWebImage" */,
-				FD1070032DBFB2DF007146C1 /* XCRemoteSwiftPackageReference "SDWebImageWebPCoder" */,
+				FDA951562DC06DF4004BC5D9 /* XCRemoteSwiftPackageReference "SDWebImageWebPCoder" */,
+				FDA951592DC06E03004BC5D9 /* XCRemoteSwiftPackageReference "SDWebImage" */,
+				FDA9515E2DC06E0E004BC5D9 /* XCRemoteSwiftPackageReference "PhotoshopReader" */,
 			);
 			preferredProjectObjectVersion = 77;
-			productRefGroup = FD106FCD2DBFA3EA007146C1 /* Products */;
+			productRefGroup = FD6E04032DC0588C004B56AA /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				FD106FCB2DBFA3EA007146C1 /* Xe-Image Convert */,
-				FD106FD92DBFA3EB007146C1 /* Xe-Image ConvertTests */,
-				FD106FE32DBFA3EB007146C1 /* Xe-Image ConvertUITests */,
+				FD6E04012DC0588C004B56AA /* Xe-Image Convert */,
+				FD6E040F2DC0588D004B56AA /* Xe-Image ConvertTests */,
+				FD6E04192DC0588D004B56AA /* Xe-Image ConvertUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		FD106FCA2DBFA3EA007146C1 /* Resources */ = {
+		FD6E04002DC0588C004B56AA /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FD106FD82DBFA3EB007146C1 /* Resources */ = {
+		FD6E040E2DC0588D004B56AA /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FD106FE22DBFA3EB007146C1 /* Resources */ = {
+		FD6E04182DC0588D004B56AA /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -252,21 +252,21 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		FD106FC82DBFA3EA007146C1 /* Sources */ = {
+		FD6E03FE2DC0588C004B56AA /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FD106FD62DBFA3EB007146C1 /* Sources */ = {
+		FD6E040C2DC0588D004B56AA /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FD106FE02DBFA3EB007146C1 /* Sources */ = {
+		FD6E04162DC0588D004B56AA /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -276,20 +276,20 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		FD106FDC2DBFA3EB007146C1 /* PBXTargetDependency */ = {
+		FD6E04122DC0588D004B56AA /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = FD106FCB2DBFA3EA007146C1 /* Xe-Image Convert */;
-			targetProxy = FD106FDB2DBFA3EB007146C1 /* PBXContainerItemProxy */;
+			target = FD6E04012DC0588C004B56AA /* Xe-Image Convert */;
+			targetProxy = FD6E04112DC0588D004B56AA /* PBXContainerItemProxy */;
 		};
-		FD106FE62DBFA3EB007146C1 /* PBXTargetDependency */ = {
+		FD6E041C2DC0588D004B56AA /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = FD106FCB2DBFA3EA007146C1 /* Xe-Image Convert */;
-			targetProxy = FD106FE52DBFA3EB007146C1 /* PBXContainerItemProxy */;
+			target = FD6E04012DC0588C004B56AA /* Xe-Image Convert */;
+			targetProxy = FD6E041B2DC0588D004B56AA /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		FD106FEC2DBFA3EB007146C1 /* Debug */ = {
+		FD6E04222DC0588D004B56AA /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -353,7 +353,7 @@
 			};
 			name = Debug;
 		};
-		FD106FED2DBFA3EB007146C1 /* Release */ = {
+		FD6E04232DC0588D004B56AA /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -409,12 +409,14 @@
 			};
 			name = Release;
 		};
-		FD106FEF2DBFA3EB007146C1 /* Debug */ = {
+		FD6E04252DC0588D004B56AA /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Xe-Image Convert/Xe_Image_Convert.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -427,21 +429,25 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.ContiBros.Xe-Image-Convert";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
 		};
-		FD106FF02DBFA3EB007146C1 /* Release */ = {
+		FD6E04262DC0588D004B56AA /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "Xe-Image Convert/Xe_Image_Convert.entitlements";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -454,16 +460,18 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.6;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.ContiBros.Xe-Image-Convert";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
-		FD106FF22DBFA3EB007146C1 /* Debug */ = {
+		FD6E04282DC0588D004B56AA /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -481,7 +489,7 @@
 			};
 			name = Debug;
 		};
-		FD106FF32DBFA3EB007146C1 /* Release */ = {
+		FD6E04292DC0588D004B56AA /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -499,7 +507,7 @@
 			};
 			name = Release;
 		};
-		FD106FF52DBFA3EB007146C1 /* Debug */ = {
+		FD6E042B2DC0588D004B56AA /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
@@ -515,7 +523,7 @@
 			};
 			name = Debug;
 		};
-		FD106FF62DBFA3EB007146C1 /* Release */ = {
+		FD6E042C2DC0588D004B56AA /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
@@ -534,38 +542,38 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		FD106FC72DBFA3EA007146C1 /* Build configuration list for PBXProject "Xe-Image Convert" */ = {
+		FD6E03FD2DC0588C004B56AA /* Build configuration list for PBXProject "Xe-Image Convert" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				FD106FEC2DBFA3EB007146C1 /* Debug */,
-				FD106FED2DBFA3EB007146C1 /* Release */,
+				FD6E04222DC0588D004B56AA /* Debug */,
+				FD6E04232DC0588D004B56AA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		FD106FEE2DBFA3EB007146C1 /* Build configuration list for PBXNativeTarget "Xe-Image Convert" */ = {
+		FD6E04242DC0588D004B56AA /* Build configuration list for PBXNativeTarget "Xe-Image Convert" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				FD106FEF2DBFA3EB007146C1 /* Debug */,
-				FD106FF02DBFA3EB007146C1 /* Release */,
+				FD6E04252DC0588D004B56AA /* Debug */,
+				FD6E04262DC0588D004B56AA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		FD106FF12DBFA3EB007146C1 /* Build configuration list for PBXNativeTarget "Xe-Image ConvertTests" */ = {
+		FD6E04272DC0588D004B56AA /* Build configuration list for PBXNativeTarget "Xe-Image ConvertTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				FD106FF22DBFA3EB007146C1 /* Debug */,
-				FD106FF32DBFA3EB007146C1 /* Release */,
+				FD6E04282DC0588D004B56AA /* Debug */,
+				FD6E04292DC0588D004B56AA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		FD106FF42DBFA3EB007146C1 /* Build configuration list for PBXNativeTarget "Xe-Image ConvertUITests" */ = {
+		FD6E042A2DC0588D004B56AA /* Build configuration list for PBXNativeTarget "Xe-Image ConvertUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				FD106FF52DBFA3EB007146C1 /* Debug */,
-				FD106FF62DBFA3EB007146C1 /* Release */,
+				FD6E042B2DC0588D004B56AA /* Debug */,
+				FD6E042C2DC0588D004B56AA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -573,23 +581,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		FD106FF92DBFAB75007146C1 /* XCRemoteSwiftPackageReference "PhotoshopReader" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/hughbe/PhotoshopReader";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.0.0;
-			};
-		};
-		FD106FFE2DBFB2B8007146C1 /* XCRemoteSwiftPackageReference "SDWebImage" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/SDWebImage/SDWebImage";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 5.21.0;
-			};
-		};
-		FD1070032DBFB2DF007146C1 /* XCRemoteSwiftPackageReference "SDWebImageWebPCoder" */ = {
+		FDA951562DC06DF4004BC5D9 /* XCRemoteSwiftPackageReference "SDWebImageWebPCoder" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/SDWebImage/SDWebImageWebPCoder";
 			requirement = {
@@ -597,30 +589,46 @@
 				minimumVersion = 0.14.6;
 			};
 		};
+		FDA951592DC06E03004BC5D9 /* XCRemoteSwiftPackageReference "SDWebImage" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/SDWebImage/SDWebImage";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.21.0;
+			};
+		};
+		FDA9515E2DC06E0E004BC5D9 /* XCRemoteSwiftPackageReference "PhotoshopReader" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/hughbe/PhotoshopReader";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		FD106FFA2DBFAB75007146C1 /* PhotoshopReader */ = {
+		FDA951572DC06DF4004BC5D9 /* SDWebImageWebPCoder */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = FD106FF92DBFAB75007146C1 /* XCRemoteSwiftPackageReference "PhotoshopReader" */;
-			productName = PhotoshopReader;
+			package = FDA951562DC06DF4004BC5D9 /* XCRemoteSwiftPackageReference "SDWebImageWebPCoder" */;
+			productName = SDWebImageWebPCoder;
 		};
-		FD106FFF2DBFB2B8007146C1 /* SDWebImage */ = {
+		FDA9515A2DC06E03004BC5D9 /* SDWebImage */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = FD106FFE2DBFB2B8007146C1 /* XCRemoteSwiftPackageReference "SDWebImage" */;
+			package = FDA951592DC06E03004BC5D9 /* XCRemoteSwiftPackageReference "SDWebImage" */;
 			productName = SDWebImage;
 		};
-		FD1070012DBFB2B8007146C1 /* SDWebImageMapKit */ = {
+		FDA9515C2DC06E03004BC5D9 /* SDWebImageMapKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = FD106FFE2DBFB2B8007146C1 /* XCRemoteSwiftPackageReference "SDWebImage" */;
+			package = FDA951592DC06E03004BC5D9 /* XCRemoteSwiftPackageReference "SDWebImage" */;
 			productName = SDWebImageMapKit;
 		};
-		FD1070042DBFB2DF007146C1 /* SDWebImageWebPCoder */ = {
+		FDA9515F2DC06E0E004BC5D9 /* PhotoshopReader */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = FD1070032DBFB2DF007146C1 /* XCRemoteSwiftPackageReference "SDWebImageWebPCoder" */;
-			productName = SDWebImageWebPCoder;
+			package = FDA9515E2DC06E0E004BC5D9 /* XCRemoteSwiftPackageReference "PhotoshopReader" */;
+			productName = PhotoshopReader;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
-	rootObject = FD106FC42DBFA3EA007146C1 /* Project object */;
+	rootObject = FD6E03FA2DC0588C004B56AA /* Project object */;
 }
