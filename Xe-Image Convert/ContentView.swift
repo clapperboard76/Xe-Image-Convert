@@ -52,6 +52,7 @@ struct ContentView: View {
     @State private var showProgress = false
     @State private var bookmarkedURLs: [URL: Data] = [:]
     @State private var selectedThumbnails: Set<URL> = []
+    @State private var lastSelectedThumbnail: URL? = nil
 
     let controlWidth: CGFloat = 140
 
@@ -118,6 +119,32 @@ struct ContentView: View {
         return false
     }
 
+    // Add this new function to handle range selection
+    private func handleThumbnailSelection(_ url: URL, isShiftPressed: Bool) {
+        if isShiftPressed, let lastSelected = lastSelectedThumbnail {
+            // Get the indices of the last selected and current thumbnail
+            if let lastIndex = accessibleImageURLs.firstIndex(of: lastSelected),
+               let currentIndex = accessibleImageURLs.firstIndex(of: url) {
+                // Determine the range
+                let startIndex = min(lastIndex, currentIndex)
+                let endIndex = max(lastIndex, currentIndex)
+                
+                // Select all thumbnails in the range
+                for index in startIndex...endIndex {
+                    selectedThumbnails.insert(accessibleImageURLs[index])
+                }
+            }
+        } else {
+            // Normal selection behavior
+            if selectedThumbnails.contains(url) {
+                selectedThumbnails.remove(url)
+            } else {
+                selectedThumbnails.insert(url)
+            }
+        }
+        lastSelectedThumbnail = url
+    }
+
     var body: some View {
         VStack(spacing: 20) {
             DragDropView(droppedImageURLs: $droppedImageURLs)
@@ -165,19 +192,17 @@ struct ContentView: View {
                                 url: url,
                                 thumbnails: $thumbnails,
                                 isSelected: selectedThumbnails.contains(url),
-                                onSelect: {
-                                    if selectedThumbnails.contains(url) {
-                                        selectedThumbnails.remove(url)
-                                    } else {
-                                        selectedThumbnails.insert(url)
-                                    }
+                                onSelect: { isShiftPressed in
+                                    handleThumbnailSelection(url, isShiftPressed: isShiftPressed)
                                 },
                                 onRemove: {
-                                    // Remove from both arrays
                                     accessibleImageURLs.removeAll { $0 == url }
                                     droppedImageURLs.removeAll { $0 == url }
                                     thumbnails.removeValue(forKey: url)
                                     selectedThumbnails.remove(url)
+                                    if lastSelectedThumbnail == url {
+                                        lastSelectedThumbnail = nil
+                                    }
                                 }
                             )
                         }
@@ -717,7 +742,7 @@ struct ThumbnailView: View {
     @Binding var thumbnails: [URL: NSImage]
     @State private var isLoading = false
     var isSelected: Bool
-    var onSelect: () -> Void
+    var onSelect: (Bool) -> Void
     var onRemove: () -> Void
 
     var body: some View {
@@ -752,7 +777,7 @@ struct ThumbnailView: View {
                 }
                 .frame(height: 80)
                 .onTapGesture {
-                    onSelect()
+                    onSelect(NSEvent.modifierFlags.contains(.shift))
                 }
             } else {
                 ZStack {
