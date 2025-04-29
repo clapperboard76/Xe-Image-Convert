@@ -54,6 +54,7 @@ struct ContentView: View {
     @State private var selectedThumbnails: Set<URL> = []
     @State private var lastSelectedThumbnail: URL? = nil
     @State private var anchorPoints: [URL: CGPoint] = [:]
+    @State private var removeLetterboxing: Bool = false
 
     let controlWidth: CGFloat = 140
 
@@ -147,6 +148,131 @@ struct ContentView: View {
 
     private func getAnchorPoint(for url: URL) -> CGPoint {
         return anchorPoints[url] ?? CGPoint(x: 0.5, y: 0.5)
+    }
+
+    private func detectLetterboxing(_ image: NSImage) -> (top: Int, bottom: Int, left: Int, right: Int)? {
+        guard let bitmap = NSBitmapImageRep(data: image.tiffRepresentation!) else { return nil }
+        
+        let width = bitmap.pixelsWide
+        let height = bitmap.pixelsHigh
+        let threshold = 0.1 // Threshold for considering a color as "black"
+        
+        // Function to check if a color is close to black
+        func isBlack(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> Bool {
+            return r < threshold && g < threshold && b < threshold
+        }
+        
+        // Check top edge
+        var topBars = 0
+        for y in 0..<height {
+            var isBlackLine = true
+            for x in 0..<width {
+                let color = bitmap.colorAt(x: x, y: y)!
+                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                color.getRed(&r, green: &g, blue: &b, alpha: &a)
+                if !isBlack(r, g, b) {
+                    isBlackLine = false
+                    break
+                }
+            }
+            if isBlackLine {
+                topBars += 1
+            } else {
+                break
+            }
+        }
+        
+        // Check bottom edge
+        var bottomBars = 0
+        for y in (0..<height).reversed() {
+            var isBlackLine = true
+            for x in 0..<width {
+                let color = bitmap.colorAt(x: x, y: y)!
+                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                color.getRed(&r, green: &g, blue: &b, alpha: &a)
+                if !isBlack(r, g, b) {
+                    isBlackLine = false
+                    break
+                }
+            }
+            if isBlackLine {
+                bottomBars += 1
+            } else {
+                break
+            }
+        }
+        
+        // Check left edge
+        var leftBars = 0
+        for x in 0..<width {
+            var isBlackLine = true
+            for y in 0..<height {
+                let color = bitmap.colorAt(x: x, y: y)!
+                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                color.getRed(&r, green: &g, blue: &b, alpha: &a)
+                if !isBlack(r, g, b) {
+                    isBlackLine = false
+                    break
+                }
+            }
+            if isBlackLine {
+                leftBars += 1
+            } else {
+                break
+            }
+        }
+        
+        // Check right edge
+        var rightBars = 0
+        for x in (0..<width).reversed() {
+            var isBlackLine = true
+            for y in 0..<height {
+                let color = bitmap.colorAt(x: x, y: y)!
+                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                color.getRed(&r, green: &g, blue: &b, alpha: &a)
+                if !isBlack(r, g, b) {
+                    isBlackLine = false
+                    break
+                }
+            }
+            if isBlackLine {
+                rightBars += 1
+            } else {
+                break
+            }
+        }
+        
+        // Only return if we found significant letterboxing
+        if topBars > 0 || bottomBars > 0 || leftBars > 0 || rightBars > 0 {
+            return (topBars, bottomBars, leftBars, rightBars)
+        }
+        
+        return nil
+    }
+
+    private func removeLetterboxing(_ image: NSImage) -> NSImage {
+        guard let letterboxing = detectLetterboxing(image) else { return image }
+        
+        let width = Int(image.size.width)
+        let height = Int(image.size.height)
+        
+        // Calculate the new dimensions
+        let newWidth = width - letterboxing.left - letterboxing.right
+        let newHeight = height - letterboxing.top - letterboxing.bottom
+        
+        // Create a new image with the cropped dimensions
+        let newImage = NSImage(size: NSSize(width: newWidth, height: newHeight))
+        newImage.lockFocus()
+        
+        // Draw the cropped portion
+        image.draw(in: NSRect(x: 0, y: 0, width: newWidth, height: newHeight),
+                  from: NSRect(x: letterboxing.left, y: letterboxing.bottom,
+                             width: newWidth, height: newHeight),
+                  operation: .copy,
+                  fraction: 1.0)
+        
+        newImage.unlockFocus()
+        return newImage
     }
 
     var body: some View {
@@ -278,6 +404,13 @@ struct ContentView: View {
                     }
                     .pickerStyle(MenuPickerStyle())
                     .frame(width: controlWidth, alignment: .trailing)
+                }
+                HStack {
+                    Text("Remove Letterboxing")
+                        .frame(width: 80, alignment: .leading)
+                    Spacer()
+                    Toggle("", isOn: $removeLetterboxing)
+                        .frame(width: controlWidth, alignment: .trailing)
                 }
                 HStack {
                     Text("Quality")
@@ -551,6 +684,11 @@ struct ContentView: View {
                 print("\nProcessing image: \(url.lastPathComponent)")
                 print("1. Original size: \(nsImage.size.width) x \(nsImage.size.height)")
                 
+                if removeLetterboxing {
+                    processedImage = removeLetterboxing(processedImage)
+                    print("2. After letterboxing removal: \(processedImage.size.width) x \(processedImage.size.height)")
+                }
+
                 if selectedAspect != .original {
                     let targetAspect: CGFloat
                     switch selectedAspect {
