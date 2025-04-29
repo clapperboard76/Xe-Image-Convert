@@ -1,0 +1,69 @@
+{
+  "originHash" : "0cf23521071a1f4c049e9be5680c87872482a0bcafa8572741988eb7a516ae58",
+  "pins" : [
+    {
+      "identity" : "datastream",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/hughbe/DataStream",
+      "state" : {
+        "revision" : "755814222d05056db30936aeb45c3b4bf46ac2c0",
+        "version" : "2.0.4"
+      }
+    },
+    {
+      "identity" : "iccreader",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/hughbe/ICCReader",
+      "state" : {
+        "revision" : "15425e9ef4f114b4801abd8ed760db9dc4ce2b56",
+        "version" : "1.1.2"
+      }
+    },
+    {
+      "identity" : "libwebp-xcode",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/SDWebImage/libwebp-Xcode.git",
+      "state" : {
+        "revision" : "0d60654eeefd5d7d2bef3835804892c40225e8b2",
+        "version" : "1.5.0"
+      }
+    },
+    {
+      "identity" : "photoshopreader",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/hughbe/PhotoshopReader",
+      "state" : {
+        "revision" : "239831f543d83fcd63667477bbe163c838cbfb00",
+        "version" : "1.0.0"
+      }
+    },
+    {
+      "identity" : "sdwebimage",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/SDWebImage/SDWebImage",
+      "state" : {
+        "revision" : "cac9a55a3ae92478a2c95042dcc8d9695d2129ca",
+        "version" : "5.21.0"
+      }
+    },
+    {
+      "identity" : "sdwebimagewebpcoder",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/SDWebImage/SDWebImageWebPCoder",
+      "state" : {
+        "revision" : "f534cfe830a7807ecc3d0332127a502426cfa067",
+        "version" : "0.14.6"
+      }
+    },
+    {
+      "identity" : "swiftbitfield",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/hughbe/SwiftBitField",
+      "state" : {
+        "revision" : "993f2e4ec4d4edfc598abd3e87cc813e937cffc1",
+        "version" : "1.0.0"
+      }
+    }
+  ],
+  "version" : 3
+}
