@@ -53,6 +53,7 @@ struct ContentView: View {
     @State private var bookmarkedURLs: [URL: Data] = [:]
     @State private var selectedThumbnails: Set<URL> = []
     @State private var lastSelectedThumbnail: URL? = nil
+    @State private var anchorPoints: [URL: CGPoint] = [:]
 
     let controlWidth: CGFloat = 140
 
@@ -119,23 +120,18 @@ struct ContentView: View {
         return false
     }
 
-    // Add this new function to handle range selection
     private func handleThumbnailSelection(_ url: URL, isShiftPressed: Bool) {
         if isShiftPressed, let lastSelected = lastSelectedThumbnail {
-            // Get the indices of the last selected and current thumbnail
             if let lastIndex = accessibleImageURLs.firstIndex(of: lastSelected),
                let currentIndex = accessibleImageURLs.firstIndex(of: url) {
-                // Determine the range
                 let startIndex = min(lastIndex, currentIndex)
                 let endIndex = max(lastIndex, currentIndex)
                 
-                // Select all thumbnails in the range
                 for index in startIndex...endIndex {
                     selectedThumbnails.insert(accessibleImageURLs[index])
                 }
             }
         } else {
-            // Normal selection behavior
             if selectedThumbnails.contains(url) {
                 selectedThumbnails.remove(url)
             } else {
@@ -145,45 +141,47 @@ struct ContentView: View {
         lastSelectedThumbnail = url
     }
 
+    private func updateAnchorPoint(for url: URL, to point: CGPoint) {
+        anchorPoints[url] = point
+    }
+
+    private func getAnchorPoint(for url: URL) -> CGPoint {
+        return anchorPoints[url] ?? CGPoint(x: 0.5, y: 0.5)
+    }
+
     var body: some View {
         VStack(spacing: 20) {
             DragDropView(droppedImageURLs: $droppedImageURLs)
                 .onChange(of: droppedImageURLs) { newURLs in
                     var processedURLs: [URL] = []
                     
+                    // Clear any previously processed URLs that are no longer in the list
+                    accessibleImageURLs.removeAll { url in
+                        !newURLs.contains(url)
+                    }
+                    
                     for url in newURLs {
                         if url.hasDirectoryPath {
-                            // For development, we'll use a simpler approach
                             let fileManager = FileManager.default
                             do {
-                                // Get all files in the directory
                                 let contents = try fileManager.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
-                                
-                                // Filter for image files
                                 let imageFiles = contents.filter { isImageFile(url: $0) }
-                                
-                                // Add all image files to the processed URLs
                                 processedURLs.append(contentsOf: imageFiles)
-                                
                                 print("Found \(imageFiles.count) images in folder: \(url.lastPathComponent)")
                             } catch {
                                 print("Error accessing folder: \(error.localizedDescription)")
-                                // In development, we'll just show the error in the console
                             }
                         } else {
-                            // For individual files, just add them directly
                             processedURLs.append(url)
                         }
                     }
                     
-                    // Update the accessible URLs
+                    // Update the accessible URLs, maintaining only the new ones
                     accessibleImageURLs = processedURLs
                     
-                    // Print some debug information
                     print("Total files processed: \(processedURLs.count)")
                 }
             
-            // Thumbnails row
             VStack(spacing: 8) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 16) {
@@ -203,7 +201,11 @@ struct ContentView: View {
                                     if lastSelectedThumbnail == url {
                                         lastSelectedThumbnail = nil
                                     }
-                                }
+                                },
+                                onAnchorPointUpdate: { point in
+                                    updateAnchorPoint(for: url, to: point)
+                                },
+                                anchorPoint: getAnchorPoint(for: url)
                             )
                         }
                     }
@@ -211,10 +213,8 @@ struct ContentView: View {
                 }
                 .frame(height: 90)
 
-                // Add bulk remove button when items are selected
                 if !selectedThumbnails.isEmpty {
                     Button(action: {
-                        // Remove all selected thumbnails
                         for url in selectedThumbnails {
                             accessibleImageURLs.removeAll { $0 == url }
                             droppedImageURLs.removeAll { $0 == url }
@@ -230,7 +230,6 @@ struct ContentView: View {
                 }
             }
 
-            // Controls panel
             VStack(spacing: 16) {
                 HStack {
                     Text("Format")
@@ -305,7 +304,6 @@ struct ContentView: View {
             }
             .padding(.horizontal)
 
-            // Convert button and progress
             VStack(spacing: 8) {
                 Button(action: convertImages) {
                     Text("Convert Images")
@@ -333,7 +331,6 @@ struct ContentView: View {
         .fileImporter(isPresented: $showFolderPicker, allowedContentTypes: [.folder], allowsMultipleSelection: false) { result in
             do {
                 let url = try result.get().first!
-                // Request access to the folder
                 let granted = url.startAccessingSecurityScopedResource()
                 if granted {
                     saveURL = url
@@ -357,16 +354,13 @@ struct ContentView: View {
         }
     }
 
-    // Helper to check if a file is an image
     func isImageFile(url: URL) -> Bool {
         let imageTypes = ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "heic", "webp", "psd", "jp2", "j2k", "jpx"]
         return imageTypes.contains(url.pathExtension.lowercased())
     }
 
-    // Add this new function to load images with HEIC support
     func loadImage(from url: URL) -> NSImage? {
         if let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil) {
-            // Get the image type
             if let type = CGImageSourceGetType(imageSource) {
                 print("Loading image of type: \(type)")
             }
@@ -378,7 +372,6 @@ struct ContentView: View {
         return nil
     }
 
-    // Helper function to resize image while maintaining aspect ratio
     func resizeImage(_ image: NSImage, to size: NSSize) -> NSImage {
         let newImage = NSImage(size: size)
         newImage.lockFocus()
@@ -390,11 +383,9 @@ struct ContentView: View {
         return newImage
     }
 
-    // Helper function to resize image to target resolution
     func resizeImageToResolution(_ image: NSImage, targetResolution: ResolutionOption) -> NSImage {
         guard targetResolution != .original else { return image }
         
-        // Get the current pixel dimensions
         let currentSize = image.size
         let isPortrait = currentSize.height > currentSize.width
         let targetDimension = CGFloat(targetResolution.maxDimension)
@@ -404,17 +395,14 @@ struct ContentView: View {
         print("2. Target dimension: \(targetDimension)")
         print("3. Is portrait: \(isPortrait)")
         
-        // Calculate new size in points (half of target pixels)
         var newSize: NSSize
         if isPortrait {
-            // For portrait images, scale based on height
             let scale = (targetDimension / 2) / currentSize.height
             newSize = NSSize(
                 width: round(currentSize.width * scale),
                 height: round(targetDimension / 2)
             )
         } else {
-            // For landscape images, scale based on width
             let scale = (targetDimension / 2) / currentSize.width
             newSize = NSSize(
                 width: round(targetDimension / 2),
@@ -424,7 +412,6 @@ struct ContentView: View {
         
         print("4. Calculated new size: \(newSize.width) x \(newSize.height)")
         
-        // Create a new image with the exact size we want
         let newImage = NSImage(size: newSize)
         newImage.lockFocus()
         image.draw(in: NSRect(origin: .zero, size: newSize),
@@ -435,11 +422,9 @@ struct ContentView: View {
         
         print("5. New image size: \(newImage.size.width) x \(newImage.size.height)")
         
-        // Check CGImage dimensions
         if let cgImage = newImage.cgImage(forProposedRect: nil, context: nil, hints: nil) {
             print("6. CGImage dimensions: \(cgImage.width) x \(cgImage.height)")
             
-            // Check the image representation
             if let rep = newImage.bestRepresentation(for: NSRect(origin: .zero, size: newSize), context: nil, hints: nil) {
                 print("7. Best representation size: \(rep.size.width) x \(rep.size.height)")
                 print("8. Best representation pixels: \(rep.pixelsWide) x \(rep.pixelsHigh)")
@@ -449,8 +434,7 @@ struct ContentView: View {
         return newImage
     }
 
-    // Helper function to crop or fit image to aspect ratio
-    func cropImageToAspectRatio(_ image: NSImage, aspectRatio: CGFloat, mode: ScalingMode) -> NSImage {
+    func cropImageToAspectRatio(_ image: NSImage, aspectRatio: CGFloat, mode: ScalingMode, anchorPoint: CGPoint = CGPoint(x: 0.5, y: 0.5)) -> NSImage {
         let currentAspect = image.size.width / image.size.height
         var newSize = image.size
         var sourceRect = NSRect(origin: .zero, size: image.size)
@@ -459,42 +443,36 @@ struct ContentView: View {
         switch mode {
         case .fill:
             if currentAspect > aspectRatio {
-                // Image is wider than target ratio
                 newSize.width = image.size.height * aspectRatio
                 newSize.height = image.size.height
-                sourceRect.origin.x = (image.size.width - newSize.width) / 2
+                let maxOffset = image.size.width - newSize.width
+                sourceRect.origin.x = maxOffset * anchorPoint.x
                 sourceRect.size = newSize
             } else {
-                // Image is taller than target ratio
                 newSize.width = image.size.width
                 newSize.height = image.size.width / aspectRatio
-                sourceRect.origin.y = (image.size.height - newSize.height) / 2
+                let maxOffset = image.size.height - newSize.height
+                sourceRect.origin.y = maxOffset * anchorPoint.y
                 sourceRect.size = newSize
             }
             destinationRect.size = newSize
             
         case .fit:
-            // Calculate the target size based on aspect ratio
             if currentAspect > aspectRatio {
-                // Image is wider than target ratio
                 newSize.width = image.size.height * aspectRatio
                 newSize.height = image.size.height
             } else {
-                // Image is taller than target ratio
                 newSize.width = image.size.width
                 newSize.height = image.size.width / aspectRatio
             }
             
-            // Calculate the scale factor to fit the image
             let scaleX = newSize.width / image.size.width
             let scaleY = newSize.height / image.size.height
             let scale = min(scaleX, scaleY)
             
-            // Calculate the scaled size
             let scaledWidth = image.size.width * scale
             let scaledHeight = image.size.height * scale
             
-            // Center the scaled image
             destinationRect.origin.x = (newSize.width - scaledWidth) / 2
             destinationRect.origin.y = (newSize.height - scaledHeight) / 2
             destinationRect.size = NSSize(width: scaledWidth, height: scaledHeight)
@@ -503,7 +481,6 @@ struct ContentView: View {
         let newImage = NSImage(size: newSize)
         newImage.lockFocus()
         
-        // For PNG and TIFF, we want to preserve transparency
         if case .fit = mode {
             NSColor.clear.set()
             NSRect(origin: .zero, size: newSize).fill()
@@ -518,7 +495,6 @@ struct ContentView: View {
         return newImage
     }
 
-    // Update the conversion logic to use the new image loading function
     func convertImages() {
         guard let outputFolder = saveURL else {
             alertMessage = "Please select a folder to save the images."
@@ -526,7 +502,6 @@ struct ContentView: View {
             return
         }
 
-        // Try to create a test file to check write access
         let testFile = outputFolder.appendingPathComponent(".test")
         do {
             try "test".write(to: testFile, atomically: true, encoding: .utf8)
@@ -545,7 +520,6 @@ struct ContentView: View {
             showProgress = true
         }
 
-        // Run conversion in background
         DispatchQueue.global(qos: .userInitiated).async {
             let totalFiles = accessibleImageURLs.filter { isImageFile(url: $0) }.count
             var processedFiles = 0
@@ -558,7 +532,6 @@ struct ContentView: View {
                     currentFile = "Converting: \(url.lastPathComponent)"
                 }
                 
-                // Use the new image loading function
                 guard let nsImage = loadImage(from: url) else {
                     failCount += 1
                     errorMessages.append("Failed to load image: \(url.lastPathComponent)")
@@ -574,7 +547,6 @@ struct ContentView: View {
                     .appendingPathComponent(baseName)
                     .appendingPathExtension(selectedFormat.rawValue)
 
-                // Apply aspect ratio if needed
                 var processedImage = nsImage
                 print("\nProcessing image: \(url.lastPathComponent)")
                 print("1. Original size: \(nsImage.size.width) x \(nsImage.size.height)")
@@ -601,11 +573,10 @@ struct ContentView: View {
                     case .twoFourOne:
                         targetAspect = 2.4 / 1.0
                     }
-                    processedImage = cropImageToAspectRatio(nsImage, aspectRatio: targetAspect, mode: selectedScalingMode)
+                    processedImage = cropImageToAspectRatio(nsImage, aspectRatio: targetAspect, mode: selectedScalingMode, anchorPoint: getAnchorPoint(for: url))
                     print("2. After aspect ratio: \(processedImage.size.width) x \(processedImage.size.height)")
                 }
 
-                // Apply resolution if needed
                 if selectedResolution != .original {
                     processedImage = resizeImageToResolution(processedImage, targetResolution: selectedResolution)
                     print("3. After resolution: \(processedImage.size.width) x \(processedImage.size.height)")
@@ -614,7 +585,6 @@ struct ContentView: View {
                 var success = false
                 switch selectedFormat {
                 case .jpg:
-                    // Create a new bitmap with the exact size we want
                     let bitmap = NSBitmapImageRep(
                         bitmapDataPlanes: nil,
                         pixelsWide: Int(processedImage.size.width),
@@ -628,7 +598,6 @@ struct ContentView: View {
                         bitsPerPixel: 0
                     )
                     
-                    // Create a new image with the exact size
                     let newImage = NSImage(size: processedImage.size)
                     newImage.lockFocus()
                     processedImage.draw(in: NSRect(origin: .zero, size: processedImage.size),
@@ -637,7 +606,6 @@ struct ContentView: View {
                                       fraction: 1.0)
                     newImage.unlockFocus()
                     
-                    // Get the bitmap representation directly
                     if let tiffData = newImage.tiffRepresentation,
                        let rep = NSBitmapImageRep(data: tiffData) {
                         print("4. Bitmap size: \(rep.pixelsWide) x \(rep.pixelsHigh)")
@@ -655,7 +623,6 @@ struct ContentView: View {
                         }
                     }
                 case .png:
-                    // Create a new bitmap with the exact size we want
                     let bitmap = NSBitmapImageRep(
                         bitmapDataPlanes: nil,
                         pixelsWide: Int(processedImage.size.width),
@@ -669,7 +636,6 @@ struct ContentView: View {
                         bitsPerPixel: 0
                     )
                     
-                    // Create a new image with the exact size
                     let newImage = NSImage(size: processedImage.size)
                     newImage.lockFocus()
                     processedImage.draw(in: NSRect(origin: .zero, size: processedImage.size),
@@ -678,7 +644,6 @@ struct ContentView: View {
                                       fraction: 1.0)
                     newImage.unlockFocus()
                     
-                    // Get the bitmap representation directly
                     if let tiffData = newImage.tiffRepresentation,
                        let rep = NSBitmapImageRep(data: tiffData) {
                         print("4. Bitmap size: \(rep.pixelsWide) x \(rep.pixelsHigh)")
@@ -744,6 +709,8 @@ struct ThumbnailView: View {
     var isSelected: Bool
     var onSelect: (Bool) -> Void
     var onRemove: () -> Void
+    var onAnchorPointUpdate: ((CGPoint) -> Void)?
+    var anchorPoint: CGPoint
 
     var body: some View {
         Group {
@@ -759,6 +726,30 @@ struct ThumbnailView: View {
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 3)
                         )
+                    
+                    if isSelected {
+                        GeometryReader { geometry in
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: 12, height: 12)
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.blue, lineWidth: 2)
+                                )
+                                .position(
+                                    x: geometry.size.width * anchorPoint.x,
+                                    y: geometry.size.height * anchorPoint.y
+                                )
+                                .gesture(
+                                    DragGesture()
+                                        .onChanged { value in
+                                            let newX = max(0, min(1, value.location.x / geometry.size.width))
+                                            let newY = max(0, min(1, value.location.y / geometry.size.height))
+                                            onAnchorPointUpdate?(CGPoint(x: newX, y: newY))
+                                        }
+                                )
+                        }
+                    }
                     
                     VStack {
                         HStack {
@@ -803,7 +794,6 @@ struct ThumbnailView: View {
     }
 }
 
-// Supported output formats
 enum ImageFormat: String, CaseIterable {
     case jpg, png, tiff, webp
 
