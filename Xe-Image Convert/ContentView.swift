@@ -55,6 +55,11 @@ struct ContentView: View {
     @State private var lastSelectedThumbnail: URL? = nil
     @State private var anchorPoints: [URL: CGPoint] = [:]
     @State private var removeLetterboxing: Bool = false
+    @State private var showDuplicateAlert = false
+    @State private var duplicateFiles: [(original: URL, new: URL)] = []
+    @State private var processingQueue: [URL] = []
+    @State private var shouldReplaceAll = false
+    @State private var shouldAddVersionAll = false
 
     let controlWidth: CGFloat = 140
 
@@ -275,180 +280,216 @@ struct ContentView: View {
         return newImage
     }
 
+    private func findNextAvailableFileName(baseURL: URL) -> URL {
+        let fileManager = FileManager.default
+        let originalName = baseURL.deletingPathExtension().lastPathComponent
+        let ext = baseURL.pathExtension
+        var index = 1
+        var newURL = baseURL
+        
+        while fileManager.fileExists(atPath: newURL.path) {
+            newURL = baseURL.deletingLastPathComponent()
+                .appendingPathComponent("\(originalName) (\(index))")
+                .appendingPathExtension(ext)
+            index += 1
+        }
+        
+        return newURL
+    }
+
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 24) {
             DragDropView(droppedImageURLs: $droppedImageURLs)
+                .frame(height: 200)
+                .background(Color(NSColor.controlBackgroundColor))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
                 .onChange(of: droppedImageURLs) { newURLs in
-                    var processedURLs: [URL] = []
-                    
-                    // Clear any previously processed URLs that are no longer in the list
-                    accessibleImageURLs.removeAll { url in
-                        !newURLs.contains(url)
-                    }
-                    
-                    for url in newURLs {
-                        if url.hasDirectoryPath {
-                            let fileManager = FileManager.default
-                            do {
-                                let contents = try fileManager.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
-                                let imageFiles = contents.filter { isImageFile(url: $0) }
-                                processedURLs.append(contentsOf: imageFiles)
-                                print("Found \(imageFiles.count) images in folder: \(url.lastPathComponent)")
-                            } catch {
-                                print("Error accessing folder: \(error.localizedDescription)")
-                            }
-                        } else {
-                            processedURLs.append(url)
+                    withAnimation(.easeInOut) {
+                        var processedURLs: [URL] = []
+                        
+                        // Clear any previously processed URLs that are no longer in the list
+                        accessibleImageURLs.removeAll { url in
+                            !newURLs.contains(url)
                         }
+                        
+                        for url in newURLs {
+                            if url.hasDirectoryPath {
+                                let fileManager = FileManager.default
+                                do {
+                                    let contents = try fileManager.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
+                                    let imageFiles = contents.filter { isImageFile(url: $0) }
+                                    processedURLs.append(contentsOf: imageFiles)
+                                    print("Found \(imageFiles.count) images in folder: \(url.lastPathComponent)")
+                                } catch {
+                                    print("Error accessing folder: \(error.localizedDescription)")
+                                }
+                            } else {
+                                processedURLs.append(url)
+                            }
+                        }
+                        
+                        // Update the accessible URLs, maintaining only the new ones
+                        accessibleImageURLs = processedURLs
+                        
+                        print("Total files processed: \(processedURLs.count)")
                     }
-                    
-                    // Update the accessible URLs, maintaining only the new ones
-                    accessibleImageURLs = processedURLs
-                    
-                    print("Total files processed: \(processedURLs.count)")
                 }
             
-            VStack(spacing: 8) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 16) {
-                        ForEach(accessibleImageURLs.filter { isImageFile(url: $0) }, id: \.self) { url in
-                            ThumbnailView(
-                                url: url,
-                                thumbnails: $thumbnails,
-                                isSelected: selectedThumbnails.contains(url),
-                                onSelect: { isShiftPressed in
-                                    handleThumbnailSelection(url, isShiftPressed: isShiftPressed)
-                                },
-                                onRemove: {
+            if !accessibleImageURLs.isEmpty {
+                VStack(spacing: 12) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(accessibleImageURLs.filter { isImageFile(url: $0) }, id: \.self) { url in
+                                ThumbnailView(
+                                    url: url,
+                                    thumbnails: $thumbnails,
+                                    isSelected: selectedThumbnails.contains(url),
+                                    onSelect: { isShiftPressed in
+                                        handleThumbnailSelection(url, isShiftPressed: isShiftPressed)
+                                    },
+                                    onRemove: {
+                                        withAnimation(.easeInOut) {
+                                            accessibleImageURLs.removeAll { $0 == url }
+                                            droppedImageURLs.removeAll { $0 == url }
+                                            thumbnails.removeValue(forKey: url)
+                                            selectedThumbnails.remove(url)
+                                            if lastSelectedThumbnail == url {
+                                                lastSelectedThumbnail = nil
+                                            }
+                                        }
+                                    },
+                                    onAnchorPointUpdate: { point in
+                                        updateAnchorPoint(for: url, to: point)
+                                    },
+                                    anchorPoint: getAnchorPoint(for: url)
+                                )
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                    }
+                    .frame(height: 90)
+
+                    if !selectedThumbnails.isEmpty {
+                        Button(action: {
+                            withAnimation(.easeInOut) {
+                                for url in selectedThumbnails {
                                     accessibleImageURLs.removeAll { $0 == url }
                                     droppedImageURLs.removeAll { $0 == url }
                                     thumbnails.removeValue(forKey: url)
-                                    selectedThumbnails.remove(url)
-                                    if lastSelectedThumbnail == url {
-                                        lastSelectedThumbnail = nil
-                                    }
-                                },
-                                onAnchorPointUpdate: { point in
-                                    updateAnchorPoint(for: url, to: point)
-                                },
-                                anchorPoint: getAnchorPoint(for: url)
-                            )
+                                }
+                                selectedThumbnails.removeAll()
+                            }
+                        }) {
+                            Text("Remove Selected (\(selectedThumbnails.count))")
+                                .foregroundColor(.red)
                         }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal)
                     }
-                    .padding(.horizontal)
                 }
-                .frame(height: 90)
-
-                if !selectedThumbnails.isEmpty {
-                    Button(action: {
-                        for url in selectedThumbnails {
-                            accessibleImageURLs.removeAll { $0 == url }
-                            droppedImageURLs.removeAll { $0 == url }
-                            thumbnails.removeValue(forKey: url)
-                        }
-                        selectedThumbnails.removeAll()
-                    }) {
-                        Text("Remove Selected (\(selectedThumbnails.count))")
-                            .foregroundColor(.red)
-                    }
-                    .buttonStyle(.bordered)
-                    .padding(.horizontal)
-                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
 
             VStack(spacing: 16) {
-                HStack {
-                    Text("Format")
-                        .frame(width: 80, alignment: .leading)
-                    Spacer()
-                    Picker("", selection: $selectedFormat) {
-                        ForEach(ImageFormat.allCases, id: \.self) { format in
-                            Text(format.displayName).tag(format)
+                Group {
+                    HStack {
+                        Text("Format")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Picker("", selection: $selectedFormat) {
+                            ForEach(ImageFormat.allCases, id: \.self) { format in
+                                Text(format.displayName).tag(format)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .frame(width: controlWidth)
+                    }
+                    
+                    HStack {
+                        Text("Aspect")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Picker("", selection: $selectedAspect) {
+                            ForEach(AspectOption.allCases, id: \.self) { aspect in
+                                Text(aspect.displayName).tag(aspect)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .frame(width: controlWidth)
+                    }
+                    
+                    HStack {
+                        Text("Scaling")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Picker("", selection: $selectedScalingMode) {
+                            ForEach(ScalingMode.allCases, id: \.self) { mode in
+                                Text(mode.displayName).tag(mode)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .frame(width: controlWidth)
+                    }
+                    
+                    HStack {
+                        Text("Resolution")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Picker("", selection: $selectedResolution) {
+                            ForEach(ResolutionOption.allCases, id: \.self) { res in
+                                Text(res.displayName).tag(res)
+                            }
+                        }
+                        .pickerStyle(MenuPickerStyle())
+                        .frame(width: controlWidth)
+                    }
+                    
+                    HStack {
+                        Text("Remove Letterboxing")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Toggle("", isOn: $removeLetterboxing)
+                    }
+                    
+                    if selectedFormat == .jpg || selectedFormat == .webp {
+                        HStack {
+                            Text("Quality")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Slider(value: $quality, in: 0.1...1.0)
+                                .labelsHidden()
+                                .frame(width: controlWidth)
+                            Text("\(Int(quality * 100))%")
+                                .frame(width: 40, alignment: .trailing)
+                                .foregroundColor(.secondary)
                         }
                     }
-                    .pickerStyle(MenuPickerStyle())
-                    .frame(width: controlWidth, alignment: .trailing)
-                }
-                HStack {
-                    Text("Aspect")
-                        .frame(width: 80, alignment: .leading)
-                    Spacer()
-                    Picker("", selection: $selectedAspect) {
-                        ForEach(AspectOption.allCases, id: \.self) { aspect in
-                            Text(aspect.displayName).tag(aspect)
+                    
+                    HStack {
+                        Text("Save to")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text(saveURL?.path ?? "Choose folder")
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .frame(width: controlWidth)
+                        Button("Choose...") {
+                            showFolderPicker = true
                         }
-                    }
-                    .pickerStyle(MenuPickerStyle())
-                    .frame(width: controlWidth, alignment: .trailing)
-                }
-                HStack {
-                    Text("Scaling")
-                        .frame(width: 80, alignment: .leading)
-                    Spacer()
-                    Picker("", selection: $selectedScalingMode) {
-                        ForEach(ScalingMode.allCases, id: \.self) { mode in
-                            Text(mode.displayName).tag(mode)
-                        }
-                    }
-                    .pickerStyle(MenuPickerStyle())
-                    .frame(width: controlWidth, alignment: .trailing)
-                }
-                HStack {
-                    Text("Resolution")
-                        .frame(width: 80, alignment: .leading)
-                    Spacer()
-                    Picker("", selection: $selectedResolution) {
-                        ForEach(ResolutionOption.allCases, id: \.self) { res in
-                            Text(res.displayName).tag(res)
-                        }
-                    }
-                    .pickerStyle(MenuPickerStyle())
-                    .frame(width: controlWidth, alignment: .trailing)
-                }
-                HStack {
-                    Text("Remove Letterboxing")
-                        .frame(width: 80, alignment: .leading)
-                    Spacer()
-                    Toggle("", isOn: $removeLetterboxing)
-                        .frame(width: controlWidth, alignment: .trailing)
-                }
-                HStack {
-                    Text("Quality")
-                        .frame(width: 80, alignment: .leading)
-                    Spacer()
-                    Slider(value: $quality, in: 0.1...1.0, step: 0.01)
-                        .labelsHidden()
-                        .frame(width: controlWidth, alignment: .trailing)
-                    Text("\(Int(quality * 100))%")
-                        .frame(width: 40, alignment: .trailing)
-                }
-                HStack {
-                    Text("Save to")
-                        .frame(width: 80, alignment: .leading)
-                    Spacer()
-                    Text(saveURL?.path ?? "Choose folder")
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .frame(width: controlWidth, alignment: .trailing)
-                    Button("Choose…") {
-                        showFolderPicker = true
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.regular)
                     }
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 24)
 
-            VStack(spacing: 8) {
+            VStack(spacing: 12) {
                 Button(action: convertImages) {
                     Text("Convert Images")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
                 }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.large)
                 .disabled(isConverting)
                 
                 if showProgress {
                     VStack(spacing: 4) {
                         ProgressView(value: conversionProgress, total: 1.0)
                             .progressViewStyle(.linear)
-                            .frame(height: 8)
                         Text(currentFile)
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -457,10 +498,10 @@ struct ContentView: View {
                     .transition(.opacity)
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 24)
             .animation(.easeInOut, value: showProgress)
         }
-        .padding()
+        .padding(20)
         .fileImporter(isPresented: $showFolderPicker, allowedContentTypes: [.folder], allowsMultipleSelection: false) { result in
             do {
                 let url = try result.get().first!
@@ -481,6 +522,28 @@ struct ContentView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text("Please grant permission to access the selected folder in System Settings > Privacy & Security > Files and Folders.")
+        }
+        .alert("Duplicate Files Found", isPresented: $showDuplicateAlert) {
+            Button("Replace All") {
+                shouldReplaceAll = true
+                processingQueue.append(contentsOf: duplicateFiles.map { $0.original })
+                beginConversion()
+            }
+            
+            Button("Add New Versions") {
+                shouldAddVersionAll = true
+                processingQueue.append(contentsOf: duplicateFiles.map { $0.original })
+                beginConversion()
+            }
+            
+            Button("Cancel", role: .cancel) {
+                // Reset state
+                processingQueue = []
+                duplicateFiles = []
+            }
+        } message: {
+            Text("Some files already exist in the destination folder:\n\n" + 
+                 duplicateFiles.map { $0.new.lastPathComponent }.joined(separator: "\n"))
         }
         .alert(isPresented: $showAlert) {
             Alert(title: Text("Conversion Complete"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
@@ -573,19 +636,22 @@ struct ContentView: View {
         var sourceRect = NSRect(origin: .zero, size: image.size)
         var destinationRect = NSRect(origin: .zero, size: image.size)
         
+        // Flip the Y coordinate of the anchor point (1 - y) to match macOS coordinate system
+        let flippedAnchorPoint = CGPoint(x: anchorPoint.x, y: 1 - anchorPoint.y)
+        
         switch mode {
         case .fill:
             if currentAspect > aspectRatio {
                 newSize.width = image.size.height * aspectRatio
                 newSize.height = image.size.height
                 let maxOffset = image.size.width - newSize.width
-                sourceRect.origin.x = maxOffset * anchorPoint.x
+                sourceRect.origin.x = maxOffset * flippedAnchorPoint.x
                 sourceRect.size = newSize
             } else {
                 newSize.width = image.size.width
                 newSize.height = image.size.width / aspectRatio
                 let maxOffset = image.size.height - newSize.height
-                sourceRect.origin.y = maxOffset * anchorPoint.y
+                sourceRect.origin.y = maxOffset * flippedAnchorPoint.y
                 sourceRect.size = newSize
             }
             destinationRect.size = newSize
@@ -635,6 +701,7 @@ struct ContentView: View {
             return
         }
 
+        // Test write permissions for the output folder
         let testFile = outputFolder.appendingPathComponent(".test")
         do {
             try "test".write(to: testFile, atomically: true, encoding: .utf8)
@@ -646,6 +713,36 @@ struct ContentView: View {
             return
         }
 
+        // Reset state
+        duplicateFiles = []
+        processingQueue = []
+        shouldReplaceAll = false
+        shouldAddVersionAll = false
+        
+        // Check for duplicates first
+        let fileManager = FileManager.default
+        for url in accessibleImageURLs.filter({ isImageFile(url: $0) }) {
+            let baseName = url.deletingPathExtension().lastPathComponent
+            let outURL = outputFolder
+                .appendingPathComponent(baseName)
+                .appendingPathExtension(selectedFormat.rawValue)
+            
+            if fileManager.fileExists(atPath: outURL.path) {
+                duplicateFiles.append((original: url, new: outURL))
+            } else {
+                processingQueue.append(url)
+            }
+        }
+        
+        if !duplicateFiles.isEmpty {
+            showDuplicateAlert = true
+            return
+        }
+        
+        beginConversion()
+    }
+    
+    private func beginConversion() {
         DispatchQueue.main.async {
             isConverting = true
             conversionProgress = 0
@@ -654,34 +751,27 @@ struct ContentView: View {
         }
 
         DispatchQueue.global(qos: .userInitiated).async {
-            let totalFiles = accessibleImageURLs.filter { isImageFile(url: $0) }.count
+            print("\n=== Starting Conversion ===")
+            print("Regular files to process: \(processingQueue.count)")
+            print("Duplicate files to process: \(duplicateFiles.count)")
+            
+            let totalFiles = processingQueue.count + duplicateFiles.count
             var processedFiles = 0
-            var successCount = 0
             var failCount = 0
             var errorMessages: [String] = []
+            var successfulInputs = Set<String>() // Track original input files that were successfully processed
 
-            for url in accessibleImageURLs.filter({ isImageFile(url: $0) }) {
-                DispatchQueue.main.async {
-                    currentFile = "Converting: \(url.lastPathComponent)"
-                }
+            // Function to process a single image
+            func processImage(inputURL: URL, outputURL: URL) -> Bool {
+                print("\nProcessing: \(inputURL.lastPathComponent) -> \(outputURL.lastPathComponent)")
                 
-                guard let nsImage = loadImage(from: url) else {
+                guard let nsImage = loadImage(from: inputURL) else {
                     failCount += 1
-                    errorMessages.append("Failed to load image: \(url.lastPathComponent)")
-                    processedFiles += 1
-                    DispatchQueue.main.async {
-                        conversionProgress = Double(processedFiles) / Double(totalFiles)
-                    }
-                    continue
+                    errorMessages.append("Failed to load image: \(inputURL.lastPathComponent)")
+                    return false
                 }
-
-                let baseName = url.deletingPathExtension().lastPathComponent
-                let outURL = outputFolder
-                    .appendingPathComponent(baseName)
-                    .appendingPathExtension(selectedFormat.rawValue)
 
                 var processedImage = nsImage
-                print("\nProcessing image: \(url.lastPathComponent)")
                 print("1. Original size: \(nsImage.size.width) x \(nsImage.size.height)")
                 
                 if removeLetterboxing {
@@ -692,26 +782,17 @@ struct ContentView: View {
                 if selectedAspect != .original {
                     let targetAspect: CGFloat
                     switch selectedAspect {
-                    case .original:
-                        targetAspect = nsImage.size.width / nsImage.size.height
-                    case .square:
-                        targetAspect = 1.0
-                    case .fourThree:
-                        targetAspect = 4.0 / 3.0
-                    case .sixteenNine:
-                        targetAspect = 16.0 / 9.0
-                    case .nineSixteen:
-                        targetAspect = 9.0 / 16.0
-                    case .threeTwo:
-                        targetAspect = 3.0 / 2.0
-                    case .twoThree:
-                        targetAspect = 2.0 / 3.0
-                    case .twoOne:
-                        targetAspect = 2.0 / 1.0
-                    case .twoFourOne:
-                        targetAspect = 2.4 / 1.0
+                    case .original: targetAspect = nsImage.size.width / nsImage.size.height
+                    case .square: targetAspect = 1.0
+                    case .fourThree: targetAspect = 4.0 / 3.0
+                    case .sixteenNine: targetAspect = 16.0 / 9.0
+                    case .nineSixteen: targetAspect = 9.0 / 16.0
+                    case .threeTwo: targetAspect = 3.0 / 2.0
+                    case .twoThree: targetAspect = 2.0 / 3.0
+                    case .twoOne: targetAspect = 2.0 / 1.0
+                    case .twoFourOne: targetAspect = 2.4 / 1.0
                     }
-                    processedImage = cropImageToAspectRatio(nsImage, aspectRatio: targetAspect, mode: selectedScalingMode, anchorPoint: getAnchorPoint(for: url))
+                    processedImage = cropImageToAspectRatio(processedImage, aspectRatio: targetAspect, mode: selectedScalingMode, anchorPoint: getAnchorPoint(for: inputURL))
                     print("2. After aspect ratio: \(processedImage.size.width) x \(processedImage.size.height)")
                 }
 
@@ -723,28 +804,7 @@ struct ContentView: View {
                 var success = false
                 switch selectedFormat {
                 case .jpg:
-                    let bitmap = NSBitmapImageRep(
-                        bitmapDataPlanes: nil,
-                        pixelsWide: Int(processedImage.size.width),
-                        pixelsHigh: Int(processedImage.size.height),
-                        bitsPerSample: 8,
-                        samplesPerPixel: 4,
-                        hasAlpha: true,
-                        isPlanar: false,
-                        colorSpaceName: .deviceRGB,
-                        bytesPerRow: 0,
-                        bitsPerPixel: 0
-                    )
-                    
-                    let newImage = NSImage(size: processedImage.size)
-                    newImage.lockFocus()
-                    processedImage.draw(in: NSRect(origin: .zero, size: processedImage.size),
-                                      from: NSRect(origin: .zero, size: processedImage.size),
-                                      operation: .copy,
-                                      fraction: 1.0)
-                    newImage.unlockFocus()
-                    
-                    if let tiffData = newImage.tiffRepresentation,
+                    if let tiffData = processedImage.tiffRepresentation,
                        let rep = NSBitmapImageRep(data: tiffData) {
                         print("4. Bitmap size: \(rep.pixelsWide) x \(rep.pixelsHigh)")
                         
@@ -753,67 +813,103 @@ struct ContentView: View {
                         ]
                         if let data = rep.representation(using: .jpeg, properties: properties) {
                             do {
-                                try data.write(to: outURL)
+                                try data.write(to: outputURL)
                                 success = true
                             } catch {
-                                errorMessages.append("Error saving \(baseName): \(error.localizedDescription)")
+                                errorMessages.append("Error saving \(inputURL.lastPathComponent): \(error.localizedDescription)")
                             }
                         }
                     }
                 case .png:
-                    let bitmap = NSBitmapImageRep(
-                        bitmapDataPlanes: nil,
-                        pixelsWide: Int(processedImage.size.width),
-                        pixelsHigh: Int(processedImage.size.height),
-                        bitsPerSample: 8,
-                        samplesPerPixel: 4,
-                        hasAlpha: true,
-                        isPlanar: false,
-                        colorSpaceName: .deviceRGB,
-                        bytesPerRow: 0,
-                        bitsPerPixel: 0
-                    )
-                    
-                    let newImage = NSImage(size: processedImage.size)
-                    newImage.lockFocus()
-                    processedImage.draw(in: NSRect(origin: .zero, size: processedImage.size),
-                                      from: NSRect(origin: .zero, size: processedImage.size),
-                                      operation: .copy,
-                                      fraction: 1.0)
-                    newImage.unlockFocus()
-                    
-                    if let tiffData = newImage.tiffRepresentation,
+                    if let tiffData = processedImage.tiffRepresentation,
                        let rep = NSBitmapImageRep(data: tiffData) {
                         print("4. Bitmap size: \(rep.pixelsWide) x \(rep.pixelsHigh)")
                         
                         if let data = rep.representation(using: .png, properties: [:]) {
                             do {
-                                try data.write(to: outURL)
+                                try data.write(to: outputURL)
                                 success = true
                             } catch {
-                                errorMessages.append("Error saving \(baseName): \(error.localizedDescription)")
+                                errorMessages.append("Error saving \(inputURL.lastPathComponent): \(error.localizedDescription)")
                             }
                         }
                     }
                 case .tiff:
                     if let tiffData = processedImage.tiffRepresentation {
                         do {
-                            try tiffData.write(to: outURL)
+                            try tiffData.write(to: outputURL)
                             success = true
                         } catch {
-                            errorMessages.append("Error saving \(baseName): \(error.localizedDescription)")
+                            errorMessages.append("Error saving \(inputURL.lastPathComponent): \(error.localizedDescription)")
                         }
                     }
                 case .webp:
-                    DispatchQueue.main.async {
-                        currentFile = "Converting to WebP: \(url.lastPathComponent)"
+                    success = saveImageAsWebP(processedImage, to: outputURL, quality: CGFloat(quality))
+                    if !success {
+                        errorMessages.append("Error saving WebP: \(inputURL.lastPathComponent)")
                     }
-                    success = saveImageAsWebP(processedImage, to: outURL, quality: CGFloat(quality))
                 }
                 
                 if success {
-                    successCount += 1
+                    print("Successfully processed: \(outputURL.path)")
+                    successfulInputs.insert(inputURL.path)
+                    print("Current successful inputs count: \(successfulInputs.count)")
+                }
+                return success
+            }
+
+            // Process regular files
+            if !processingQueue.isEmpty {
+                print("\n--- Processing Regular Files ---")
+            }
+            
+            for url in processingQueue {
+                let outURL = saveURL!
+                    .appendingPathComponent(url.deletingPathExtension().lastPathComponent)
+                    .appendingPathExtension(selectedFormat.rawValue)
+                
+                DispatchQueue.main.async {
+                    currentFile = "Converting: \(url.lastPathComponent)"
+                }
+                
+                if !processImage(inputURL: url, outputURL: outURL) {
+                    failCount += 1
+                }
+                
+                processedFiles += 1
+                DispatchQueue.main.async {
+                    conversionProgress = Double(processedFiles) / Double(totalFiles)
+                }
+            }
+
+            // Process duplicate files
+            if !duplicateFiles.isEmpty {
+                print("\n--- Processing Duplicate Files ---")
+            }
+            
+            for duplicate in duplicateFiles {
+                let outURL: URL
+                if shouldAddVersionAll {
+                    outURL = findNextAvailableFileName(baseURL: duplicate.new)
+                    print("Creating new version: \(outURL.lastPathComponent)")
                 } else {
+                    if FileManager.default.isDeletableFile(atPath: duplicate.new.path) {
+                        do {
+                            try FileManager.default.removeItem(at: duplicate.new)
+                            print("Removed existing file: \(duplicate.new.lastPathComponent)")
+                        } catch {
+                            errorMessages.append("Error replacing \(duplicate.new.lastPathComponent): \(error.localizedDescription)")
+                            continue
+                        }
+                    }
+                    outURL = duplicate.new
+                }
+                
+                DispatchQueue.main.async {
+                    currentFile = "Converting: \(duplicate.original.lastPathComponent)"
+                }
+                
+                if !processImage(inputURL: duplicate.original, outputURL: outURL) {
                     failCount += 1
                 }
                 
@@ -823,12 +919,19 @@ struct ContentView: View {
                 }
             }
             
+            print("\n=== Conversion Complete ===")
+            print("Total successful inputs: \(successfulInputs.count)")
+            print("Original files processed:")
+            for path in successfulInputs {
+                print("- \(path)")
+            }
+            
             DispatchQueue.main.async {
                 isConverting = false
                 currentFile = ""
                 showProgress = false
                 
-                let message = "Successfully converted \(successCount) image(s)."
+                let message = "Successfully converted \(successfulInputs.count) image(s)."
                 if failCount > 0 {
                     alertMessage = message + "\n\nFailed: \(failCount)\nErrors:\n" + errorMessages.joined(separator: "\n")
                 } else {
@@ -862,7 +965,7 @@ struct ThumbnailView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
-                                .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 3)
+                                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
                         )
                     
                     if isSelected {
@@ -872,7 +975,7 @@ struct ThumbnailView: View {
                                 .frame(width: 12, height: 12)
                                 .overlay(
                                     Circle()
-                                        .stroke(Color.blue, lineWidth: 2)
+                                        .stroke(Color.accentColor, lineWidth: 2)
                                 )
                                 .position(
                                     x: geometry.size.width * anchorPoint.x,
@@ -895,8 +998,7 @@ struct ThumbnailView: View {
                             Button(action: onRemove) {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.white)
-                                    .background(Color.black.opacity(0.5))
-                                    .clipShape(Circle())
+                                    .shadow(radius: 1)
                             }
                             .buttonStyle(PlainButtonStyle())
                             .padding(4)
@@ -911,12 +1013,11 @@ struct ThumbnailView: View {
             } else {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.gray.opacity(0.2))
+                        .fill(Color(NSColor.controlBackgroundColor))
                         .frame(height: 80)
                     ProgressView()
                         .scaleEffect(0.7)
                 }
-                .frame(height: 80)
                 .onAppear {
                     if !isLoading {
                         isLoading = true

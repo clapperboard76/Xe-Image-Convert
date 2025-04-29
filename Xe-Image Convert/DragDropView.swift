@@ -6,20 +6,18 @@ struct DragDropView: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(isDragging ? Color.accentColor : Color.gray, lineWidth: 3)
-                .background(isDragging ? Color.accentColor.opacity(0.1) : Color.clear)
-                .animation(.easeInOut, value: isDragging)
-            VStack {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isDragging ? Color.accentColor : Color.gray.opacity(0.3), lineWidth: isDragging ? 2 : 1)
+                .background(Color(NSColor.controlBackgroundColor))
+            VStack(spacing: 12) {
                 Image(systemName: "photo.on.rectangle.angled")
-                    .font(.system(size: 48))
+                    .font(.system(size: 32))
                     .foregroundColor(.gray)
                 Text("Drag images here to convert")
-                    .font(.headline)
-                    .foregroundColor(.gray)
+                    .font(.system(size: 14))
+                    .foregroundColor(.secondary)
             }
         }
-        .frame(height: 180)
         .onDrop(of: ["public.file-url"], isTargeted: $isDragging) { providers in
             for provider in providers {
                 _ = provider.loadObject(ofClass: URL.self) { url, _ in
