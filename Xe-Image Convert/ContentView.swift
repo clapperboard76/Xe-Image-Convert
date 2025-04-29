@@ -173,7 +173,9 @@ struct ContentView: View {
                                     }
                                 },
                                 onRemove: {
+                                    // Remove from both arrays
                                     accessibleImageURLs.removeAll { $0 == url }
+                                    droppedImageURLs.removeAll { $0 == url }
                                     thumbnails.removeValue(forKey: url)
                                     selectedThumbnails.remove(url)
                                 }
@@ -190,6 +192,7 @@ struct ContentView: View {
                         // Remove all selected thumbnails
                         for url in selectedThumbnails {
                             accessibleImageURLs.removeAll { $0 == url }
+                            droppedImageURLs.removeAll { $0 == url }
                             thumbnails.removeValue(forKey: url)
                         }
                         selectedThumbnails.removeAll()
@@ -331,13 +334,18 @@ struct ContentView: View {
 
     // Helper to check if a file is an image
     func isImageFile(url: URL) -> Bool {
-        let imageTypes = ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "heic", "webp", "psd"]
+        let imageTypes = ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "heic", "webp", "psd", "jp2", "j2k", "jpx"]
         return imageTypes.contains(url.pathExtension.lowercased())
     }
 
     // Add this new function to load images with HEIC support
     func loadImage(from url: URL) -> NSImage? {
         if let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil) {
+            // Get the image type
+            if let type = CGImageSourceGetType(imageSource) {
+                print("Loading image of type: \(type)")
+            }
+            
             if let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) {
                 return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
             }
