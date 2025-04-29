@@ -50,6 +50,7 @@ struct ContentView: View {
     @State private var currentFile: String = ""
     @State private var showProgress = false
     @State private var bookmarkedURLs: [URL: Data] = [:]
+    @State private var selectedThumbnails: Set<URL> = []
 
     let controlWidth: CGFloat = 140
 
@@ -155,15 +156,50 @@ struct ContentView: View {
                 }
             
             // Thumbnails row
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
-                    ForEach(accessibleImageURLs.filter { isImageFile(url: $0) }, id: \.self) { url in
-                        ThumbnailView(url: url, thumbnails: $thumbnails)
+            VStack(spacing: 8) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 16) {
+                        ForEach(accessibleImageURLs.filter { isImageFile(url: $0) }, id: \.self) { url in
+                            ThumbnailView(
+                                url: url,
+                                thumbnails: $thumbnails,
+                                isSelected: selectedThumbnails.contains(url),
+                                onSelect: {
+                                    if selectedThumbnails.contains(url) {
+                                        selectedThumbnails.remove(url)
+                                    } else {
+                                        selectedThumbnails.insert(url)
+                                    }
+                                },
+                                onRemove: {
+                                    accessibleImageURLs.removeAll { $0 == url }
+                                    thumbnails.removeValue(forKey: url)
+                                    selectedThumbnails.remove(url)
+                                }
+                            )
+                        }
                     }
+                    .padding(.horizontal)
                 }
-                .padding(.horizontal)
+                .frame(height: 90)
+
+                // Add bulk remove button when items are selected
+                if !selectedThumbnails.isEmpty {
+                    Button(action: {
+                        // Remove all selected thumbnails
+                        for url in selectedThumbnails {
+                            accessibleImageURLs.removeAll { $0 == url }
+                            thumbnails.removeValue(forKey: url)
+                        }
+                        selectedThumbnails.removeAll()
+                    }) {
+                        Text("Remove Selected (\(selectedThumbnails.count))")
+                            .foregroundColor(.red)
+                    }
+                    .buttonStyle(.bordered)
+                    .padding(.horizontal)
+                }
             }
-            .frame(height: 90)
 
             // Controls panel
             VStack(spacing: 16) {
@@ -651,9 +687,9 @@ struct ContentView: View {
                 currentFile = ""
                 showProgress = false
                 
-                let message = "Successfully converted \(successCount) image(s). Failed: \(failCount)."
-                if !errorMessages.isEmpty {
-                    alertMessage = message + "\n\nErrors:\n" + errorMessages.joined(separator: "\n")
+                let message = "Successfully converted \(successCount) image(s)."
+                if failCount > 0 {
+                    alertMessage = message + "\n\nFailed: \(failCount)\nErrors:\n" + errorMessages.joined(separator: "\n")
                 } else {
                     alertMessage = message
                 }
@@ -667,16 +703,44 @@ struct ThumbnailView: View {
     let url: URL
     @Binding var thumbnails: [URL: NSImage]
     @State private var isLoading = false
+    var isSelected: Bool
+    var onSelect: () -> Void
+    var onRemove: () -> Void
 
     var body: some View {
         Group {
             if let nsImage = thumbnails[url] {
                 let aspectRatio = nsImage.size.width / max(nsImage.size.height, 1)
-                Image(nsImage: nsImage)
-                    .resizable()
-                    .aspectRatio(aspectRatio, contentMode: .fit)
-                    .frame(height: 80)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                ZStack {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .aspectRatio(aspectRatio, contentMode: .fit)
+                        .frame(height: 80)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 3)
+                        )
+                    
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Button(action: onRemove) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.white)
+                                    .background(Color.black.opacity(0.5))
+                                    .clipShape(Circle())
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .padding(4)
+                        }
+                        Spacer()
+                    }
+                }
+                .frame(height: 80)
+                .onTapGesture {
+                    onSelect()
+                }
             } else {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8)
