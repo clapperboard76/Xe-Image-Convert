@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Merged into the generated Info.plist (GENERATE_INFOPLIST_FILE = YES).
+	     Sparkle keys live here because Xcode does not inject custom
+	     INFOPLIST_KEY_* settings — only its own known keys. -->
+	<key>SUFeedURL</key>
+	<string>$(XE_SU_FEED_URL)</string>
+	<key>SUPublicEDKey</key>
+	<string>Fx9CQ8FpsRTnZpYsSv7hael3y0C/O5AfuKurnlGFMgc=</string>
+</dict>
+</plist>

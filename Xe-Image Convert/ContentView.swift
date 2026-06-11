@@ -12,26 +12,30 @@ import SDWebImage
 import SDWebImageWebPCoder
 import ImageIO
 
-func registerWebPCoder() {
-    let webpCoder = SDImageWebPCoder.shared
-    SDImageCodersManager.shared.addCoder(webpCoder)
-}
+// MARK: - Image saving helpers
 
 func saveImageAsWebP(_ nsImage: NSImage, to url: URL, quality: CGFloat = 0.8) -> Bool {
-    guard let tiffData = nsImage.tiffRepresentation,
-          let bitmap = NSBitmapImageRep(data: tiffData),
-          let _ = bitmap.cgImage else { return false }
-    let webpData = SDImageWebPCoder.shared.encodedData(with: nsImage, format: .webP, options: [.encodeCompressionQuality: quality])
+    guard nsImage.tiffRepresentation != nil else { return false }
+    let webpData = SDImageWebPCoder.shared.encodedData(
+        with: nsImage,
+        format: .webP,
+        options: [.encodeCompressionQuality: quality]
+    )
     do {
         try webpData?.write(to: url)
         return true
     } catch {
-        print("Failed to save WEBP: \(error)")
         return false
     }
 }
 
+// MARK: - ContentView
+
 struct ContentView: View {
+    // Registers the WebP coder exactly once for the process lifetime.
+    private static let _coderRegistration: Void = {
+        SDImageCodersManager.shared.addCoder(SDImageWebPCoder.shared)
+    }()
     @State private var droppedImageURLs: [URL] = []
     @State private var thumbnails: [URL: NSImage] = [:]
     @State private var selectedFormat: ImageFormat = .jpg
@@ -54,19 +58,19 @@ struct ContentView: View {
     @State private var selectedThumbnails: Set<URL> = []
     @State private var lastSelectedThumbnail: URL? = nil
     @State private var anchorPoints: [URL: CGPoint] = [:]
-    @State private var removeLetterboxing: Bool = false
+    @State private var shouldRemoveLetterboxing: Bool = false
     @State private var showDuplicateAlert = false
     @State private var duplicateFiles: [(original: URL, new: URL)] = []
     @State private var processingQueue: [URL] = []
     @State private var shouldReplaceAll = false
     @State private var shouldAddVersionAll = false
-
-    let controlWidth: CGFloat = 140
+    @State private var showHelp = false
 
     init() {
-        registerWebPCoder()
         loadBookmarks()
     }
+
+    // MARK: - Bookmark helpers
 
     private func loadBookmarks() {
         if let bookmarksData = UserDefaults.standard.dictionary(forKey: "FolderBookmarks") as? [String: Data] {
@@ -87,44 +91,43 @@ struct ContentView: View {
     }
 
     private func requestFolderAccess(for url: URL) -> Bool {
-        let granted = url.startAccessingSecurityScopedResource()
-        if granted {
-            do {
-                let bookmarkData = try url.bookmarkData(options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
-                                                      includingResourceValuesForKeys: nil,
-                                                      relativeTo: nil)
-                bookmarkedURLs[url] = bookmarkData
-                saveBookmarks()
-                return true
-            } catch {
-                print("Error creating bookmark: \(error)")
-                return false
-            }
+        guard url.startAccessingSecurityScopedResource() else { return false }
+        do {
+            let bookmarkData = try url.bookmarkData(
+                options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+            bookmarkedURLs[url] = bookmarkData
+            saveBookmarks()
+            return true
+        } catch {
+            return false
         }
-        return false
     }
 
     private func restoreAccess(for url: URL) -> Bool {
-        if let bookmarkData = bookmarkedURLs[url] {
-            do {
-                var isStale = false
-                let restoredURL = try URL(resolvingBookmarkData: bookmarkData,
-                                        options: [.withSecurityScope],
-                                        relativeTo: nil,
-                                        bookmarkDataIsStale: &isStale)
-                if isStale {
-                    bookmarkedURLs.removeValue(forKey: url)
-                    saveBookmarks()
-                    return false
-                }
-                return restoredURL.startAccessingSecurityScopedResource()
-            } catch {
-                print("Error resolving bookmark: \(error)")
+        guard let bookmarkData = bookmarkedURLs[url] else { return false }
+        do {
+            var isStale = false
+            let restoredURL = try URL(
+                resolvingBookmarkData: bookmarkData,
+                options: [.withSecurityScope],
+                relativeTo: nil,
+                bookmarkDataIsStale: &isStale
+            )
+            if isStale {
+                bookmarkedURLs.removeValue(forKey: url)
+                saveBookmarks()
                 return false
             }
+            return restoredURL.startAccessingSecurityScopedResource()
+        } catch {
+            return false
         }
-        return false
     }
+
+    // MARK: - Selection helpers
 
     private func handleThumbnailSelection(_ url: URL, isShiftPressed: Bool) {
         if isShiftPressed, let lastSelected = lastSelectedThumbnail {
@@ -132,7 +135,6 @@ struct ContentView: View {
                let currentIndex = accessibleImageURLs.firstIndex(of: url) {
                 let startIndex = min(lastIndex, currentIndex)
                 let endIndex = max(lastIndex, currentIndex)
-                
                 for index in startIndex...endIndex {
                     selectedThumbnails.insert(accessibleImageURLs[index])
                 }
@@ -152,133 +154,101 @@ struct ContentView: View {
     }
 
     private func getAnchorPoint(for url: URL) -> CGPoint {
-        return anchorPoints[url] ?? CGPoint(x: 0.5, y: 0.5)
+        anchorPoints[url] ?? CGPoint(x: 0.5, y: 0.5)
     }
 
-    private func detectLetterboxing(_ image: NSImage) -> (top: Int, bottom: Int, left: Int, right: Int)? {
-        guard let bitmap = NSBitmapImageRep(data: image.tiffRepresentation!) else { return nil }
-        
-        let width = bitmap.pixelsWide
-        let height = bitmap.pixelsHigh
-        let threshold = 0.1 // Threshold for considering a color as "black"
-        
-        // Function to check if a color is close to black
-        func isBlack(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> Bool {
-            return r < threshold && g < threshold && b < threshold
-        }
-        
-        // Check top edge
-        var topBars = 0
-        for y in 0..<height {
-            var isBlackLine = true
-            for x in 0..<width {
-                let color = bitmap.colorAt(x: x, y: y)!
-                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-                color.getRed(&r, green: &g, blue: &b, alpha: &a)
-                if !isBlack(r, g, b) {
-                    isBlackLine = false
-                    break
-                }
-            }
-            if isBlackLine {
-                topBars += 1
-            } else {
-                break
-            }
-        }
-        
-        // Check bottom edge
-        var bottomBars = 0
-        for y in (0..<height).reversed() {
-            var isBlackLine = true
-            for x in 0..<width {
-                let color = bitmap.colorAt(x: x, y: y)!
-                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-                color.getRed(&r, green: &g, blue: &b, alpha: &a)
-                if !isBlack(r, g, b) {
-                    isBlackLine = false
-                    break
-                }
-            }
-            if isBlackLine {
-                bottomBars += 1
-            } else {
-                break
-            }
-        }
-        
-        // Check left edge
-        var leftBars = 0
-        for x in 0..<width {
-            var isBlackLine = true
-            for y in 0..<height {
-                let color = bitmap.colorAt(x: x, y: y)!
-                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-                color.getRed(&r, green: &g, blue: &b, alpha: &a)
-                if !isBlack(r, g, b) {
-                    isBlackLine = false
-                    break
-                }
-            }
-            if isBlackLine {
-                leftBars += 1
-            } else {
-                break
-            }
-        }
-        
-        // Check right edge
-        var rightBars = 0
-        for x in (0..<width).reversed() {
-            var isBlackLine = true
-            for y in 0..<height {
-                let color = bitmap.colorAt(x: x, y: y)!
-                var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-                color.getRed(&r, green: &g, blue: &b, alpha: &a)
-                if !isBlack(r, g, b) {
-                    isBlackLine = false
-                    break
-                }
-            }
-            if isBlackLine {
-                rightBars += 1
-            } else {
-                break
-            }
-        }
-        
-        // Only return if we found significant letterboxing
-        if topBars > 0 || bottomBars > 0 || leftBars > 0 || rightBars > 0 {
-            return (topBars, bottomBars, leftBars, rightBars)
-        }
-        
-        return nil
-    }
+    // MARK: - Drawing helper (replaces deprecated lockFocus/unlockFocus)
 
-    private func removeLetterboxing(_ image: NSImage) -> NSImage {
-        guard let letterboxing = detectLetterboxing(image) else { return image }
-        
-        let width = Int(image.size.width)
-        let height = Int(image.size.height)
-        
-        // Calculate the new dimensions
-        let newWidth = width - letterboxing.left - letterboxing.right
-        let newHeight = height - letterboxing.top - letterboxing.bottom
-        
-        // Create a new image with the cropped dimensions
-        let newImage = NSImage(size: NSSize(width: newWidth, height: newHeight))
-        newImage.lockFocus()
-        
-        // Draw the cropped portion
-        image.draw(in: NSRect(x: 0, y: 0, width: newWidth, height: newHeight),
-                  from: NSRect(x: letterboxing.left, y: letterboxing.bottom,
-                             width: newWidth, height: newHeight),
-                  operation: .copy,
-                  fraction: 1.0)
-        
-        newImage.unlockFocus()
+    /// Draws into a new off-screen NSImage using an `NSBitmapImageRep` context.
+    private func drawIntoNewImage(size: NSSize, draw: () -> Void) -> NSImage? {
+        guard size.width > 0, size.height > 0 else { return nil }
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: Int(size.width),
+            pixelsHigh: Int(size.height),
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ) else { return nil }
+        NSGraphicsContext.saveGraphicsState()
+        defer { NSGraphicsContext.restoreGraphicsState() }
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        NSGraphicsContext.current?.imageInterpolation = .high
+        draw()
+        let newImage = NSImage(size: size)
+        newImage.addRepresentation(rep)
         return newImage
     }
+
+    // MARK: - Letterboxing
+
+    private func detectLetterboxing(_ image: NSImage) -> (top: Int, bottom: Int, left: Int, right: Int)? {
+        guard let tiffData = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiffData) else { return nil }
+
+        let width = bitmap.pixelsWide
+        let height = bitmap.pixelsHigh
+        let threshold: CGFloat = 0.1
+
+        func isBlack(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> Bool {
+            r < threshold && g < threshold && b < threshold
+        }
+
+        func isBlackPixel(x: Int, y: Int) -> Bool {
+            guard let color = bitmap.colorAt(x: x, y: y) else { return false }
+            var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+            color.getRed(&r, green: &g, blue: &b, alpha: &a)
+            return isBlack(r, g, b)
+        }
+
+        var topBars = 0
+        for y in 0..<height {
+            if (0..<width).allSatisfy({ isBlackPixel(x: $0, y: y) }) { topBars += 1 } else { break }
+        }
+
+        var bottomBars = 0
+        for y in (0..<height).reversed() {
+            if (0..<width).allSatisfy({ isBlackPixel(x: $0, y: y) }) { bottomBars += 1 } else { break }
+        }
+
+        var leftBars = 0
+        for x in 0..<width {
+            if (0..<height).allSatisfy({ isBlackPixel(x: x, y: $0) }) { leftBars += 1 } else { break }
+        }
+
+        var rightBars = 0
+        for x in (0..<width).reversed() {
+            if (0..<height).allSatisfy({ isBlackPixel(x: x, y: $0) }) { rightBars += 1 } else { break }
+        }
+
+        guard topBars > 0 || bottomBars > 0 || leftBars > 0 || rightBars > 0 else { return nil }
+        return (topBars, bottomBars, leftBars, rightBars)
+    }
+
+    private func cropLetterboxing(_ image: NSImage) -> NSImage {
+        guard let letterboxing = detectLetterboxing(image) else { return image }
+
+        let width = Int(image.size.width)
+        let height = Int(image.size.height)
+        let newWidth = width - letterboxing.left - letterboxing.right
+        let newHeight = height - letterboxing.top - letterboxing.bottom
+        let newSize = NSSize(width: newWidth, height: newHeight)
+
+        return drawIntoNewImage(size: newSize) {
+            image.draw(
+                in: NSRect(origin: .zero, size: newSize),
+                from: NSRect(x: letterboxing.left, y: letterboxing.bottom, width: newWidth, height: newHeight),
+                operation: .copy,
+                fraction: 1.0
+            )
+        } ?? image
+    }
+
+    // MARK: - File naming
 
     private func findNextAvailableFileName(baseURL: URL) -> URL {
         let fileManager = FileManager.default
@@ -286,59 +256,127 @@ struct ContentView: View {
         let ext = baseURL.pathExtension
         var index = 1
         var newURL = baseURL
-        
+
         while fileManager.fileExists(atPath: newURL.path) {
             newURL = baseURL.deletingLastPathComponent()
                 .appendingPathComponent("\(originalName) (\(index))")
                 .appendingPathExtension(ext)
             index += 1
         }
-        
         return newURL
     }
 
+    // MARK: - Body
+
     var body: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 0) {
+
+            // ── Branded header ─────────────────────────────────────────
+            HStack(spacing: 10) {
+                AppIconView(size: 28)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Xe-Image Convert")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text("by Xenon Post")
+                        .font(.system(size: 10))
+                        .foregroundStyle(Color.brand.textFaint)
+                }
+
+                Spacer()
+
+                Button {
+                    showHelp = true
+                } label: {
+                    Image(systemName: "questionmark.circle")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Open Xe-Image Convert Help")
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+
+            Divider()
+
+            // ── Drop zone ──────────────────────────────────────────────
             DragDropView(droppedImageURLs: $droppedImageURLs)
-                .frame(height: 200)
-                .background(Color(NSColor.controlBackgroundColor))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .onChange(of: droppedImageURLs) { newURLs in
-                    withAnimation(.easeInOut) {
+                .frame(height: 88)
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .padding(.bottom, accessibleImageURLs.isEmpty ? 14 : 10)
+                .onChange(of: droppedImageURLs) { _, newURLs in
+                    withAnimation(.easeInOut(duration: 0.2)) {
                         var processedURLs: [URL] = []
-                        
-                        // Clear any previously processed URLs that are no longer in the list
-                        accessibleImageURLs.removeAll { url in
-                            !newURLs.contains(url)
-                        }
-                        
+                        accessibleImageURLs.removeAll { !newURLs.contains($0) }
                         for url in newURLs {
                             if url.hasDirectoryPath {
-                                let fileManager = FileManager.default
-                                do {
-                                    let contents = try fileManager.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
-                                    let imageFiles = contents.filter { isImageFile(url: $0) }
-                                    processedURLs.append(contentsOf: imageFiles)
-                                    print("Found \(imageFiles.count) images in folder: \(url.lastPathComponent)")
-                                } catch {
-                                    print("Error accessing folder: \(error.localizedDescription)")
-                                }
+                                let contents = (try? FileManager.default.contentsOfDirectory(
+                                    at: url, includingPropertiesForKeys: nil
+                                )) ?? []
+                                processedURLs.append(contentsOf: contents.filter { isImageFile(url: $0) })
                             } else {
                                 processedURLs.append(url)
                             }
                         }
-                        
-                        // Update the accessible URLs, maintaining only the new ones
                         accessibleImageURLs = processedURLs
-                        
-                        print("Total files processed: \(processedURLs.count)")
                     }
                 }
-            
+
+            // ── Thumbnail strip ────────────────────────────────────────
             if !accessibleImageURLs.isEmpty {
-                VStack(spacing: 12) {
+                VStack(spacing: 4) {
+                    // Strip toolbar
+                    HStack {
+                        let count = accessibleImageURLs.filter { isImageFile(url: $0) }.count
+                        Text("\(count) image\(count == 1 ? "" : "s")")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+
+                        Spacer()
+
+                        if !selectedThumbnails.isEmpty {
+                            Button {
+                                withAnimation(.easeInOut) {
+                                    for url in selectedThumbnails {
+                                        accessibleImageURLs.removeAll { $0 == url }
+                                        droppedImageURLs.removeAll { $0 == url }
+                                        thumbnails.removeValue(forKey: url)
+                                    }
+                                    selectedThumbnails.removeAll()
+                                }
+                            } label: {
+                                Text("Remove \(selectedThumbnails.count) selected")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.red)
+                            }
+                            .buttonStyle(.plain)
+
+                            Text("·")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Button {
+                            withAnimation(.easeInOut) {
+                                accessibleImageURLs.removeAll()
+                                droppedImageURLs.removeAll()
+                                thumbnails.removeAll()
+                                selectedThumbnails.removeAll()
+                                lastSelectedThumbnail = nil
+                            }
+                        } label: {
+                            Text("Clear All")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 16)
+
+                    // Thumbnails
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
+                        HStack(spacing: 10) {
                             ForEach(accessibleImageURLs.filter { isImageFile(url: $0) }, id: \.self) { url in
                                 ThumbnailView(
                                     url: url,
@@ -353,169 +391,152 @@ struct ContentView: View {
                                             droppedImageURLs.removeAll { $0 == url }
                                             thumbnails.removeValue(forKey: url)
                                             selectedThumbnails.remove(url)
-                                            if lastSelectedThumbnail == url {
-                                                lastSelectedThumbnail = nil
-                                            }
+                                            if lastSelectedThumbnail == url { lastSelectedThumbnail = nil }
                                         }
                                     },
-                                    onAnchorPointUpdate: { point in
-                                        updateAnchorPoint(for: url, to: point)
-                                    },
+                                    onAnchorPointUpdate: { point in updateAnchorPoint(for: url, to: point) },
                                     anchorPoint: getAnchorPoint(for: url)
                                 )
                             }
                         }
                         .padding(.horizontal, 16)
                     }
-                    .frame(height: 90)
-
-                    if !selectedThumbnails.isEmpty {
-                        Button(action: {
-                            withAnimation(.easeInOut) {
-                                for url in selectedThumbnails {
-                                    accessibleImageURLs.removeAll { $0 == url }
-                                    droppedImageURLs.removeAll { $0 == url }
-                                    thumbnails.removeValue(forKey: url)
-                                }
-                                selectedThumbnails.removeAll()
-                            }
-                        }) {
-                            Text("Remove Selected (\(selectedThumbnails.count))")
-                                .foregroundColor(.red)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal)
-                    }
+                    .frame(height: 86)
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
+                .padding(.bottom, 4)
             }
 
-            VStack(spacing: 16) {
-                Group {
-                    HStack {
-                        Text("Format")
-                            .frame(maxWidth: .infinity, alignment: .leading)
+            // ── Settings ──────────────────────────────────────────────
+            VStack(spacing: 8) {
+
+                // Output options card
+                SettingsCard {
+                    SettingsRow(label: "Format") {
                         Picker("", selection: $selectedFormat) {
-                            ForEach(ImageFormat.allCases, id: \.self) { format in
-                                Text(format.displayName).tag(format)
-                            }
+                            ForEach(ImageFormat.allCases, id: \.self) { Text($0.displayName).tag($0) }
                         }
-                        .pickerStyle(MenuPickerStyle())
-                        .frame(width: controlWidth)
+                        .labelsHidden()
+                        .fixedSize()
                     }
-                    
-                    HStack {
-                        Text("Aspect")
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    SettingsDivider()
+                    SettingsRow(label: "Aspect Ratio") {
                         Picker("", selection: $selectedAspect) {
-                            ForEach(AspectOption.allCases, id: \.self) { aspect in
-                                Text(aspect.displayName).tag(aspect)
-                            }
+                            ForEach(AspectOption.allCases, id: \.self) { Text($0.displayName).tag($0) }
                         }
-                        .pickerStyle(MenuPickerStyle())
-                        .frame(width: controlWidth)
+                        .labelsHidden()
+                        .fixedSize()
                     }
-                    
-                    HStack {
-                        Text("Scaling")
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    SettingsDivider()
+                    SettingsRow(label: "Scaling") {
                         Picker("", selection: $selectedScalingMode) {
-                            ForEach(ScalingMode.allCases, id: \.self) { mode in
-                                Text(mode.displayName).tag(mode)
-                            }
+                            ForEach(ScalingMode.allCases, id: \.self) { Text($0.displayName).tag($0) }
                         }
-                        .pickerStyle(MenuPickerStyle())
-                        .frame(width: controlWidth)
+                        .labelsHidden()
+                        .fixedSize()
                     }
-                    
-                    HStack {
-                        Text("Resolution")
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    SettingsDivider()
+                    SettingsRow(label: "Resolution") {
                         Picker("", selection: $selectedResolution) {
-                            ForEach(ResolutionOption.allCases, id: \.self) { res in
-                                Text(res.displayName).tag(res)
+                            ForEach(ResolutionOption.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                        }
+                        .labelsHidden()
+                        .fixedSize()
+                    }
+                }
+
+                // Processing options card
+                SettingsCard {
+                    SettingsRow(label: "Remove Letterboxing") {
+                        Toggle("", isOn: $shouldRemoveLetterboxing).labelsHidden()
+                    }
+                    if selectedFormat == .jpg || selectedFormat == .webp {
+                        SettingsDivider()
+                        SettingsRow(label: "Quality") {
+                            HStack(spacing: 8) {
+                                Slider(value: $quality, in: 0.1...1.0)
+                                    .frame(width: 110)
+                                Text("\(Int(quality * 100))%")
+                                    .monospacedDigit()
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 34, alignment: .trailing)
                             }
                         }
-                        .pickerStyle(MenuPickerStyle())
-                        .frame(width: controlWidth)
                     }
-                    
-                    HStack {
-                        Text("Remove Letterboxing")
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Toggle("", isOn: $removeLetterboxing)
-                    }
-                    
-                    if selectedFormat == .jpg || selectedFormat == .webp {
-                        HStack {
-                            Text("Quality")
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            Slider(value: $quality, in: 0.1...1.0)
-                                .labelsHidden()
-                                .frame(width: controlWidth)
-                            Text("\(Int(quality * 100))%")
-                                .frame(width: 40, alignment: .trailing)
-                                .foregroundColor(.secondary)
+                }
+                .animation(.easeInOut(duration: 0.2), value: selectedFormat)
+
+                // Save location card
+                SettingsCard {
+                    SettingsRow(label: "Save to") {
+                        HStack(spacing: 6) {
+                            Text(saveURL?.lastPathComponent ?? "Pictures")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Button("Change…") { showFolderPicker = true }
+                                .buttonStyle(.borderless)
+                                .font(.system(size: 12))
                         }
-                    }
-                    
-                    HStack {
-                        Text("Save to")
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        Text(saveURL?.path ?? "Choose folder")
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                            .frame(width: controlWidth)
-                        Button("Choose...") {
-                            showFolderPicker = true
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.regular)
                     }
                 }
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 12)
+            .padding(.top, 10)
+            .padding(.bottom, 4)
 
-            VStack(spacing: 12) {
-                Button(action: convertImages) {
-                    Text("Convert Images")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(isConverting)
-                
+            // ── Convert button + progress ──────────────────────────────
+            VStack(spacing: 8) {
                 if showProgress {
                     VStack(spacing: 4) {
                         ProgressView(value: conversionProgress, total: 1.0)
                             .progressViewStyle(.linear)
                         Text(currentFile)
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
-                    .padding(.horizontal)
                     .transition(.opacity)
                 }
+
+                Button(action: convertImages) {
+                    Text(isConverting ? "Converting…" : "Convert Images")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 4)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(isConverting)
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 12)
+            .padding(.bottom, 14)
+            .padding(.top, 2)
             .animation(.easeInOut, value: showProgress)
         }
-        .padding(20)
-        .fileImporter(isPresented: $showFolderPicker, allowedContentTypes: [.folder], allowsMultipleSelection: false) { result in
-            do {
-                let url = try result.get().first!
-                let granted = url.startAccessingSecurityScopedResource()
-                if granted {
-                    saveURL = url
-                    permissionDeniedFolders.remove(url)
-                } else {
-                    permissionDeniedFolders.insert(url)
-                    showPermissionAlert = true
+        .frame(minWidth: 380, maxWidth: 460)
+        .background(Color.brand.background)
+        .preferredColorScheme(.dark)
+        .animation(.easeInOut(duration: 0.2), value: accessibleImageURLs.isEmpty)
+        .sheet(isPresented: $showHelp) { HelpView() }
+        .fileImporter(
+            isPresented: $showFolderPicker,
+            allowedContentTypes: [.folder],
+            allowsMultipleSelection: false
+        ) { result in
+            guard case .success(let urls) = result, let url = urls.first else {
+                if case .failure(let error) = result {
+                    alertMessage = "Error selecting folder: \(error.localizedDescription)"
+                    showAlert = true
                 }
-            } catch {
-                alertMessage = "Error selecting folder: \(error.localizedDescription)"
-                showAlert = true
+                return
+            }
+            if url.startAccessingSecurityScopedResource() {
+                saveURL = url
+                permissionDeniedFolders.remove(url)
+            } else {
+                permissionDeniedFolders.insert(url)
+                showPermissionAlert = true
             }
         }
         .alert("Permission Required", isPresented: $showPermissionAlert) {
@@ -529,133 +550,132 @@ struct ContentView: View {
                 processingQueue.append(contentsOf: duplicateFiles.map { $0.original })
                 beginConversion()
             }
-            
             Button("Add New Versions") {
                 shouldAddVersionAll = true
                 processingQueue.append(contentsOf: duplicateFiles.map { $0.original })
                 beginConversion()
             }
-            
             Button("Cancel", role: .cancel) {
-                // Reset state
                 processingQueue = []
                 duplicateFiles = []
             }
         } message: {
-            Text("Some files already exist in the destination folder:\n\n" + 
+            Text("Some files already exist in the destination folder:\n\n" +
                  duplicateFiles.map { $0.new.lastPathComponent }.joined(separator: "\n"))
         }
         .alert(isPresented: $showAlert) {
-            Alert(title: Text("Conversion Complete"), message: Text(alertMessage), dismissButton: .default(Text("OK")))
+            Alert(
+                title: Text("Conversion Complete"),
+                message: Text(alertMessage),
+                dismissButton: .default(Text("OK"))
+            )
         }
     }
 
+    // MARK: - Image utilities
+
     func isImageFile(url: URL) -> Bool {
-        let imageTypes = ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "heic", "webp", "psd", "jp2", "j2k", "jpx"]
+        let imageTypes = ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "heic", "webp", "psd", "jp2", "j2k", "jpx",
+                          "afdesign", "afphoto", "afpub", "af"]
         return imageTypes.contains(url.pathExtension.lowercased())
     }
 
     func loadImage(from url: URL) -> NSImage? {
-        if let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil) {
-            if let type = CGImageSourceGetType(imageSource) {
-                print("Loading image of type: \(type)")
-            }
-            
-            if let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) {
-                return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
-            }
+        if let imageSource = CGImageSourceCreateWithURL(url as CFURL, nil),
+           let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) {
+            return NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
         }
-        return nil
+        // Fallback: use Quick Look for formats ImageIO can't read (e.g. Affinity files)
+        let semaphore = DispatchSemaphore(value: 0)
+        var result: NSImage?
+        let request = QLThumbnailGenerator.Request(
+            fileAt: url,
+            size: CGSize(width: 8192, height: 8192),
+            scale: 1.0,
+            representationTypes: .all
+        )
+        QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { thumbnail, _ in
+            if let cgImage = thumbnail?.cgImage {
+                result = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+            }
+            semaphore.signal()
+        }
+        semaphore.wait()
+        return result
     }
 
     func resizeImage(_ image: NSImage, to size: NSSize) -> NSImage {
-        let newImage = NSImage(size: size)
-        newImage.lockFocus()
-        image.draw(in: NSRect(origin: .zero, size: size),
-                  from: NSRect(origin: .zero, size: image.size),
-                  operation: .copy,
-                  fraction: 1.0)
-        newImage.unlockFocus()
-        return newImage
+        drawIntoNewImage(size: size) {
+            image.draw(
+                in: NSRect(origin: .zero, size: size),
+                from: NSRect(origin: .zero, size: image.size),
+                operation: .copy,
+                fraction: 1.0
+            )
+        } ?? image
     }
 
     func resizeImageToResolution(_ image: NSImage, targetResolution: ResolutionOption) -> NSImage {
         guard targetResolution != .original else { return image }
-        
+
         let currentSize = image.size
         let isPortrait = currentSize.height > currentSize.width
         let targetDimension = CGFloat(targetResolution.maxDimension)
-        
-        print("\nResolution scaling process:")
-        print("1. Input image size: \(currentSize.width) x \(currentSize.height)")
-        print("2. Target dimension: \(targetDimension)")
-        print("3. Is portrait: \(isPortrait)")
-        
-        var newSize: NSSize
+
+        let newSize: NSSize
         if isPortrait {
-            let scale = (targetDimension / 2) / currentSize.height
+            let scale = targetDimension / currentSize.height
             newSize = NSSize(
                 width: round(currentSize.width * scale),
-                height: round(targetDimension / 2)
+                height: round(targetDimension)
             )
         } else {
-            let scale = (targetDimension / 2) / currentSize.width
+            let scale = targetDimension / currentSize.width
             newSize = NSSize(
-                width: round(targetDimension / 2),
+                width: round(targetDimension),
                 height: round(currentSize.height * scale)
             )
         }
-        
-        print("4. Calculated new size: \(newSize.width) x \(newSize.height)")
-        
-        let newImage = NSImage(size: newSize)
-        newImage.lockFocus()
-        image.draw(in: NSRect(origin: .zero, size: newSize),
-                  from: NSRect(origin: .zero, size: currentSize),
-                  operation: .copy,
-                  fraction: 1.0)
-        newImage.unlockFocus()
-        
-        print("5. New image size: \(newImage.size.width) x \(newImage.size.height)")
-        
-        if let cgImage = newImage.cgImage(forProposedRect: nil, context: nil, hints: nil) {
-            print("6. CGImage dimensions: \(cgImage.width) x \(cgImage.height)")
-            
-            if let rep = newImage.bestRepresentation(for: NSRect(origin: .zero, size: newSize), context: nil, hints: nil) {
-                print("7. Best representation size: \(rep.size.width) x \(rep.size.height)")
-                print("8. Best representation pixels: \(rep.pixelsWide) x \(rep.pixelsHigh)")
-            }
-        }
-        
-        return newImage
+
+        return drawIntoNewImage(size: newSize) {
+            image.draw(
+                in: NSRect(origin: .zero, size: newSize),
+                from: NSRect(origin: .zero, size: currentSize),
+                operation: .copy,
+                fraction: 1.0
+            )
+        } ?? image
     }
 
-    func cropImageToAspectRatio(_ image: NSImage, aspectRatio: CGFloat, mode: ScalingMode, anchorPoint: CGPoint = CGPoint(x: 0.5, y: 0.5)) -> NSImage {
+    func cropImageToAspectRatio(
+        _ image: NSImage,
+        aspectRatio: CGFloat,
+        mode: ScalingMode,
+        anchorPoint: CGPoint = CGPoint(x: 0.5, y: 0.5)
+    ) -> NSImage {
         let currentAspect = image.size.width / image.size.height
         var newSize = image.size
         var sourceRect = NSRect(origin: .zero, size: image.size)
         var destinationRect = NSRect(origin: .zero, size: image.size)
-        
-        // Flip the Y coordinate of the anchor point (1 - y) to match macOS coordinate system
-        let flippedAnchorPoint = CGPoint(x: anchorPoint.x, y: 1 - anchorPoint.y)
-        
+
+        // Flip Y to match macOS coordinate system
+        let flippedAnchor = CGPoint(x: anchorPoint.x, y: 1 - anchorPoint.y)
+
         switch mode {
         case .fill:
             if currentAspect > aspectRatio {
                 newSize.width = image.size.height * aspectRatio
                 newSize.height = image.size.height
-                let maxOffset = image.size.width - newSize.width
-                sourceRect.origin.x = maxOffset * flippedAnchorPoint.x
+                sourceRect.origin.x = (image.size.width - newSize.width) * flippedAnchor.x
                 sourceRect.size = newSize
             } else {
                 newSize.width = image.size.width
                 newSize.height = image.size.width / aspectRatio
-                let maxOffset = image.size.height - newSize.height
-                sourceRect.origin.y = maxOffset * flippedAnchorPoint.y
+                sourceRect.origin.y = (image.size.height - newSize.height) * flippedAnchor.y
                 sourceRect.size = newSize
             }
             destinationRect.size = newSize
-            
+
         case .fit:
             if currentAspect > aspectRatio {
                 newSize.width = image.size.height * aspectRatio
@@ -664,35 +684,27 @@ struct ContentView: View {
                 newSize.width = image.size.width
                 newSize.height = image.size.width / aspectRatio
             }
-            
-            let scaleX = newSize.width / image.size.width
-            let scaleY = newSize.height / image.size.height
-            let scale = min(scaleX, scaleY)
-            
-            let scaledWidth = image.size.width * scale
-            let scaledHeight = image.size.height * scale
-            
-            destinationRect.origin.x = (newSize.width - scaledWidth) / 2
-            destinationRect.origin.y = (newSize.height - scaledHeight) / 2
-            destinationRect.size = NSSize(width: scaledWidth, height: scaledHeight)
+
+            let scale = min(newSize.width / image.size.width, newSize.height / image.size.height)
+            let scaledSize = NSSize(width: image.size.width * scale, height: image.size.height * scale)
+            destinationRect = NSRect(
+                x: (newSize.width - scaledSize.width) / 2,
+                y: (newSize.height - scaledSize.height) / 2,
+                width: scaledSize.width,
+                height: scaledSize.height
+            )
         }
-        
-        let newImage = NSImage(size: newSize)
-        newImage.lockFocus()
-        
-        if case .fit = mode {
-            NSColor.clear.set()
-            NSRect(origin: .zero, size: newSize).fill()
-        }
-        
-        image.draw(in: destinationRect,
-                  from: sourceRect,
-                  operation: .copy,
-                  fraction: 1.0)
-        
-        newImage.unlockFocus()
-        return newImage
+
+        return drawIntoNewImage(size: newSize) {
+            if case .fit = mode {
+                NSColor.clear.set()
+                NSRect(origin: .zero, size: newSize).fill()
+            }
+            image.draw(in: destinationRect, from: sourceRect, operation: .copy, fraction: 1.0)
+        } ?? image
     }
+
+    // MARK: - Conversion
 
     func convertImages() {
         guard let outputFolder = saveURL else {
@@ -701,8 +713,7 @@ struct ContentView: View {
             return
         }
 
-        // Test write permissions for the output folder
-        let testFile = outputFolder.appendingPathComponent(".test")
+        let testFile = outputFolder.appendingPathComponent(".xe_write_test")
         do {
             try "test".write(to: testFile, atomically: true, encoding: .utf8)
             try FileManager.default.removeItem(at: testFile)
@@ -713,35 +724,33 @@ struct ContentView: View {
             return
         }
 
-        // Reset state
         duplicateFiles = []
         processingQueue = []
         shouldReplaceAll = false
         shouldAddVersionAll = false
-        
-        // Check for duplicates first
+
         let fileManager = FileManager.default
         for url in accessibleImageURLs.filter({ isImageFile(url: $0) }) {
             let baseName = url.deletingPathExtension().lastPathComponent
             let outURL = outputFolder
                 .appendingPathComponent(baseName)
                 .appendingPathExtension(selectedFormat.rawValue)
-            
+
             if fileManager.fileExists(atPath: outURL.path) {
                 duplicateFiles.append((original: url, new: outURL))
             } else {
                 processingQueue.append(url)
             }
         }
-        
+
         if !duplicateFiles.isEmpty {
             showDuplicateAlert = true
             return
         }
-        
+
         beginConversion()
     }
-    
+
     private func beginConversion() {
         DispatchQueue.main.async {
             isConverting = true
@@ -751,32 +760,22 @@ struct ContentView: View {
         }
 
         DispatchQueue.global(qos: .userInitiated).async {
-            print("\n=== Starting Conversion ===")
-            print("Regular files to process: \(processingQueue.count)")
-            print("Duplicate files to process: \(duplicateFiles.count)")
-            
             let totalFiles = processingQueue.count + duplicateFiles.count
             var processedFiles = 0
+            var successCount = 0
             var failCount = 0
             var errorMessages: [String] = []
-            var successfulInputs = Set<String>() // Track original input files that were successfully processed
 
-            // Function to process a single image
             func processImage(inputURL: URL, outputURL: URL) -> Bool {
-                print("\nProcessing: \(inputURL.lastPathComponent) -> \(outputURL.lastPathComponent)")
-                
                 guard let nsImage = loadImage(from: inputURL) else {
-                    failCount += 1
                     errorMessages.append("Failed to load image: \(inputURL.lastPathComponent)")
                     return false
                 }
 
                 var processedImage = nsImage
-                print("1. Original size: \(nsImage.size.width) x \(nsImage.size.height)")
-                
-                if removeLetterboxing {
-                    processedImage = removeLetterboxing(processedImage)
-                    print("2. After letterboxing removal: \(processedImage.size.width) x \(processedImage.size.height)")
+
+                if shouldRemoveLetterboxing {
+                    processedImage = cropLetterboxing(processedImage)
                 }
 
                 if selectedAspect != .original {
@@ -792,46 +791,40 @@ struct ContentView: View {
                     case .twoOne: targetAspect = 2.0 / 1.0
                     case .twoFourOne: targetAspect = 2.4 / 1.0
                     }
-                    processedImage = cropImageToAspectRatio(processedImage, aspectRatio: targetAspect, mode: selectedScalingMode, anchorPoint: getAnchorPoint(for: inputURL))
-                    print("2. After aspect ratio: \(processedImage.size.width) x \(processedImage.size.height)")
+                    processedImage = cropImageToAspectRatio(
+                        processedImage,
+                        aspectRatio: targetAspect,
+                        mode: selectedScalingMode,
+                        anchorPoint: getAnchorPoint(for: inputURL)
+                    )
                 }
 
                 if selectedResolution != .original {
                     processedImage = resizeImageToResolution(processedImage, targetResolution: selectedResolution)
-                    print("3. After resolution: \(processedImage.size.width) x \(processedImage.size.height)")
                 }
 
                 var success = false
                 switch selectedFormat {
                 case .jpg:
                     if let tiffData = processedImage.tiffRepresentation,
-                       let rep = NSBitmapImageRep(data: tiffData) {
-                        print("4. Bitmap size: \(rep.pixelsWide) x \(rep.pixelsHigh)")
-                        
-                        let properties: [NSBitmapImageRep.PropertyKey: Any] = [
-                            .compressionFactor: quality
-                        ]
-                        if let data = rep.representation(using: .jpeg, properties: properties) {
-                            do {
-                                try data.write(to: outputURL)
-                                success = true
-                            } catch {
-                                errorMessages.append("Error saving \(inputURL.lastPathComponent): \(error.localizedDescription)")
-                            }
+                       let rep = NSBitmapImageRep(data: tiffData),
+                       let data = rep.representation(using: .jpeg, properties: [.compressionFactor: quality]) {
+                        do {
+                            try data.write(to: outputURL)
+                            success = true
+                        } catch {
+                            errorMessages.append("Error saving \(inputURL.lastPathComponent): \(error.localizedDescription)")
                         }
                     }
                 case .png:
                     if let tiffData = processedImage.tiffRepresentation,
-                       let rep = NSBitmapImageRep(data: tiffData) {
-                        print("4. Bitmap size: \(rep.pixelsWide) x \(rep.pixelsHigh)")
-                        
-                        if let data = rep.representation(using: .png, properties: [:]) {
-                            do {
-                                try data.write(to: outputURL)
-                                success = true
-                            } catch {
-                                errorMessages.append("Error saving \(inputURL.lastPathComponent): \(error.localizedDescription)")
-                            }
+                       let rep = NSBitmapImageRep(data: tiffData),
+                       let data = rep.representation(using: .png, properties: [:]) {
+                        do {
+                            try data.write(to: outputURL)
+                            success = true
+                        } catch {
+                            errorMessages.append("Error saving \(inputURL.lastPathComponent): \(error.localizedDescription)")
                         }
                     }
                 case .tiff:
@@ -849,93 +842,74 @@ struct ContentView: View {
                         errorMessages.append("Error saving WebP: \(inputURL.lastPathComponent)")
                     }
                 }
-                
-                if success {
-                    print("Successfully processed: \(outputURL.path)")
-                    successfulInputs.insert(inputURL.path)
-                    print("Current successful inputs count: \(successfulInputs.count)")
-                }
+
                 return success
             }
 
-            // Process regular files
-            if !processingQueue.isEmpty {
-                print("\n--- Processing Regular Files ---")
-            }
-            
             for url in processingQueue {
                 let outURL = saveURL!
                     .appendingPathComponent(url.deletingPathExtension().lastPathComponent)
                     .appendingPathExtension(selectedFormat.rawValue)
-                
+
                 DispatchQueue.main.async {
                     currentFile = "Converting: \(url.lastPathComponent)"
                 }
-                
-                if !processImage(inputURL: url, outputURL: outURL) {
+
+                if processImage(inputURL: url, outputURL: outURL) {
+                    successCount += 1
+                } else {
                     failCount += 1
                 }
-                
+
                 processedFiles += 1
                 DispatchQueue.main.async {
                     conversionProgress = Double(processedFiles) / Double(totalFiles)
                 }
             }
 
-            // Process duplicate files
-            if !duplicateFiles.isEmpty {
-                print("\n--- Processing Duplicate Files ---")
-            }
-            
             for duplicate in duplicateFiles {
                 let outURL: URL
                 if shouldAddVersionAll {
                     outURL = findNextAvailableFileName(baseURL: duplicate.new)
-                    print("Creating new version: \(outURL.lastPathComponent)")
                 } else {
                     if FileManager.default.isDeletableFile(atPath: duplicate.new.path) {
                         do {
                             try FileManager.default.removeItem(at: duplicate.new)
-                            print("Removed existing file: \(duplicate.new.lastPathComponent)")
                         } catch {
                             errorMessages.append("Error replacing \(duplicate.new.lastPathComponent): \(error.localizedDescription)")
+                            processedFiles += 1
+                            failCount += 1
                             continue
                         }
                     }
                     outURL = duplicate.new
                 }
-                
+
                 DispatchQueue.main.async {
                     currentFile = "Converting: \(duplicate.original.lastPathComponent)"
                 }
-                
-                if !processImage(inputURL: duplicate.original, outputURL: outURL) {
+
+                if processImage(inputURL: duplicate.original, outputURL: outURL) {
+                    successCount += 1
+                } else {
                     failCount += 1
                 }
-                
+
                 processedFiles += 1
                 DispatchQueue.main.async {
                     conversionProgress = Double(processedFiles) / Double(totalFiles)
                 }
             }
-            
-            print("\n=== Conversion Complete ===")
-            print("Total successful inputs: \(successfulInputs.count)")
-            print("Original files processed:")
-            for path in successfulInputs {
-                print("- \(path)")
-            }
-            
+
             DispatchQueue.main.async {
                 isConverting = false
                 currentFile = ""
                 showProgress = false
-                
-                let message = "Successfully converted \(successfulInputs.count) image(s)."
+
                 if failCount > 0 {
-                    alertMessage = message + "\n\nFailed: \(failCount)\nErrors:\n" + errorMessages.joined(separator: "\n")
+                    alertMessage = "Converted \(successCount) image(s).\n\nFailed: \(failCount)\n" + errorMessages.joined(separator: "\n")
                 } else {
-                    alertMessage = message
+                    alertMessage = "Successfully converted \(successCount) image(s)."
                 }
                 showAlert = true
             }
@@ -943,10 +917,51 @@ struct ContentView: View {
     }
 }
 
+// MARK: - Settings components
+
+private struct SettingsCard<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            content()
+        }
+        .background(Color.brand.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct SettingsRow<Control: View>: View {
+    let label: String
+    @ViewBuilder let control: () -> Control
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 13))
+            Spacer()
+            control()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+    }
+}
+
+private struct SettingsDivider: View {
+    var body: some View {
+        Color.brand.border
+            .frame(height: 1)
+            .padding(.leading, 12)
+    }
+}
+
+// MARK: - ThumbnailView
+
 struct ThumbnailView: View {
     let url: URL
     @Binding var thumbnails: [URL: NSImage]
     @State private var isLoading = false
+    @State private var loadFailed = false
     var isSelected: Bool
     var onSelect: (Bool) -> Void
     var onRemove: () -> Void
@@ -967,31 +982,27 @@ struct ThumbnailView: View {
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
                         )
-                    
+
                     if isSelected {
                         GeometryReader { geometry in
                             Circle()
                                 .fill(Color.white)
                                 .frame(width: 12, height: 12)
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.accentColor, lineWidth: 2)
-                                )
+                                .overlay(Circle().stroke(Color.accentColor, lineWidth: 2))
                                 .position(
                                     x: geometry.size.width * anchorPoint.x,
                                     y: geometry.size.height * anchorPoint.y
                                 )
                                 .gesture(
-                                    DragGesture()
-                                        .onChanged { value in
-                                            let newX = max(0, min(1, value.location.x / geometry.size.width))
-                                            let newY = max(0, min(1, value.location.y / geometry.size.height))
-                                            onAnchorPointUpdate?(CGPoint(x: newX, y: newY))
-                                        }
+                                    DragGesture().onChanged { value in
+                                        let newX = max(0, min(1, value.location.x / geometry.size.width))
+                                        let newY = max(0, min(1, value.location.y / geometry.size.height))
+                                        onAnchorPointUpdate?(CGPoint(x: newX, y: newY))
+                                    }
                                 )
                         }
                     }
-                    
+
                     VStack {
                         HStack {
                             Spacer()
@@ -1010,28 +1021,40 @@ struct ThumbnailView: View {
                 .onTapGesture {
                     onSelect(NSEvent.modifierFlags.contains(.shift))
                 }
+            } else if loadFailed {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.brand.surface)
+                        .frame(height: 80)
+                    Image(systemName: "photo")
+                        .foregroundColor(.secondary)
+                }
+                .frame(height: 80)
             } else {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color(NSColor.controlBackgroundColor))
+                        .fill(Color.brand.surface)
                         .frame(height: 80)
-                    ProgressView()
-                        .scaleEffect(0.7)
+                    ProgressView().scaleEffect(0.7)
                 }
                 .onAppear {
-                    if !isLoading {
-                        isLoading = true
-                        ThumbnailLoader.shared.loadThumbnail(for: url, fixedHeight: 80) { image in
-                            if let image = image {
-                                thumbnails[url] = image
-                            }
+                    guard !isLoading else { return }
+                    isLoading = true
+                    ThumbnailLoader.shared.loadThumbnail(for: url, fixedHeight: 80) { image in
+                        if let image = image {
+                            thumbnails[url] = image
+                        } else {
+                            loadFailed = true
                         }
+                        isLoading = false
                     }
                 }
             }
         }
     }
 }
+
+// MARK: - Enums
 
 enum ImageFormat: String, CaseIterable {
     case jpg, png, tiff, webp
@@ -1092,7 +1115,7 @@ enum ResolutionOption: String, CaseIterable {
 
 enum ScalingMode: String, CaseIterable {
     case fill, fit
-    
+
     var displayName: String {
         switch self {
         case .fill: return "Fill"

@@ -7,9 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		D20BDC5F2FADCD7100F0893B /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = D20BDC5E2FADCD7100F0893B /* Sparkle */; };
+		D27E652D2F920CDE00AC2BBC /* SDWebImageMapKit in Frameworks */ = {isa = PBXBuildFile; productRef = FDA9515C2DC06E03004BC5D9 /* SDWebImageMapKit */; };
 		FDA951582DC06DF4004BC5D9 /* SDWebImageWebPCoder in Frameworks */ = {isa = PBXBuildFile; productRef = FDA951572DC06DF4004BC5D9 /* SDWebImageWebPCoder */; };
 		FDA9515B2DC06E03004BC5D9 /* SDWebImage in Frameworks */ = {isa = PBXBuildFile; productRef = FDA9515A2DC06E03004BC5D9 /* SDWebImage */; };
-		FDA9515D2DC06E03004BC5D9 /* SDWebImageMapKit in Frameworks */ = {isa = PBXBuildFile; productRef = FDA9515C2DC06E03004BC5D9 /* SDWebImageMapKit */; };
 		FDA951602DC06E0E004BC5D9 /* PhotoshopReader in Frameworks */ = {isa = PBXBuildFile; productRef = FDA9515F2DC06E0E004BC5D9 /* PhotoshopReader */; };
 /* End PBXBuildFile section */
 
@@ -59,8 +60,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D20BDC5F2FADCD7100F0893B /* Sparkle in Frameworks */,
+				D27E652D2F920CDE00AC2BBC /* SDWebImageMapKit in Frameworks */,
 				FDA9515B2DC06E03004BC5D9 /* SDWebImage in Frameworks */,
-				FDA9515D2DC06E03004BC5D9 /* SDWebImageMapKit in Frameworks */,
 				FDA951602DC06E0E004BC5D9 /* PhotoshopReader in Frameworks */,
 				FDA951582DC06DF4004BC5D9 /* SDWebImageWebPCoder in Frameworks */,
 			);
@@ -123,6 +125,7 @@
 			);
 			name = "Xe-Image Convert";
 			packageProductDependencies = (
+				D20BDC5E2FADCD7100F0893B /* Sparkle */,
 				FDA951572DC06DF4004BC5D9 /* SDWebImageWebPCoder */,
 				FDA9515A2DC06E03004BC5D9 /* SDWebImage */,
 				FDA9515C2DC06E03004BC5D9 /* SDWebImageMapKit */,
@@ -186,7 +189,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1630;
-				LastUpgradeCheck = 1630;
+				LastUpgradeCheck = 2610;
 				TargetAttributes = {
 					FD6E04012DC0588C004B56AA = {
 						CreatedOnToolsVersion = 16.3;
@@ -214,6 +217,7 @@
 				FDA951562DC06DF4004BC5D9 /* XCRemoteSwiftPackageReference "SDWebImageWebPCoder" */,
 				FDA951592DC06E03004BC5D9 /* XCRemoteSwiftPackageReference "SDWebImage" */,
 				FDA9515E2DC06E0E004BC5D9 /* XCRemoteSwiftPackageReference "PhotoshopReader" */,
+				D20BDC5C2FADCD7100F0893B /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = FD6E04032DC0588C004B56AA /* Products */;
@@ -323,6 +327,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = RR9SSU85FD;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -348,6 +353,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -387,6 +393,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = RR9SSU85FD;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -405,6 +412,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
@@ -420,18 +428,28 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = RR9SSU85FD;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_FILE_ACCESS_DOWNLOADS_FOLDER = readwrite;
+				ENABLE_FILE_ACCESS_MOVIES_FOLDER = readwrite;
+				ENABLE_FILE_ACCESS_MUSIC_FOLDER = readwrite;
+				ENABLE_FILE_ACCESS_PICTURE_FOLDER = readwrite;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Xe-Image Convert";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_FILE = "Xe-Image Convert/Info.plist";
+				XE_SU_FEED_URL = "https://updates.xenon-post.com/xe-image-convert/appcast.xml";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 1.3;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.ContiBros.Xe-Image-Convert";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -452,18 +470,28 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = RR9SSU85FD;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_FILE_ACCESS_DOWNLOADS_FOLDER = readwrite;
+				ENABLE_FILE_ACCESS_MOVIES_FOLDER = readwrite;
+				ENABLE_FILE_ACCESS_MUSIC_FOLDER = readwrite;
+				ENABLE_FILE_ACCESS_PICTURE_FOLDER = readwrite;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Xe-Image Convert";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_FILE = "Xe-Image Convert/Info.plist";
+				XE_SU_FEED_URL = "https://updates.xenon-post.com/xe-image-convert/appcast.xml";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 1.3;
+				MARKETING_VERSION = 1.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.ContiBros.Xe-Image-Convert";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -479,6 +507,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = RR9SSU85FD;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.3;
@@ -497,6 +526,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = RR9SSU85FD;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.3;
@@ -512,8 +542,10 @@
 		FD6E042B2DC0588D004B56AA /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = RR9SSU85FD;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
@@ -528,8 +560,10 @@
 		FD6E042C2DC0588D004B56AA /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = RR9SSU85FD;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
@@ -583,6 +617,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		D20BDC5C2FADCD7100F0893B /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.9.1;
+			};
+		};
 		FDA951562DC06DF4004BC5D9 /* XCRemoteSwiftPackageReference "SDWebImageWebPCoder" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/SDWebImage/SDWebImageWebPCoder";
@@ -610,6 +652,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		D20BDC5E2FADCD7100F0893B /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D20BDC5C2FADCD7100F0893B /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
 		FDA951572DC06DF4004BC5D9 /* SDWebImageWebPCoder */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = FDA951562DC06DF4004BC5D9 /* XCRemoteSwiftPackageReference "SDWebImageWebPCoder" */;

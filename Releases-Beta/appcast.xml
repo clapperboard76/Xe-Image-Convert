@@ -1,0 +1,14 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Xe-Image Convert</title>
+        <item>
+            <title>1.5b1</title>
+            <pubDate>Thu, 11 Jun 2026 14:36:42 +1000</pubDate>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>1.5b1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.6</sparkle:minimumSystemVersion>
+            <enclosure url="https://updates.xenon-post.com/xe-image-convert-beta/xe-image-convert-1.5b1.zip" length="5358421" type="application/octet-stream" sparkle:edSignature="v4dE6RTx6YQpwGlGRnJGV05czxSERcmzpzkFLr+TaraX6VQ+PPrmod8r4z/24+9Z2eY97JQxb+QqQENnqxZiBg=="/>
+        </item>
+    </channel>
+</rss>
