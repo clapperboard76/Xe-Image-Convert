@@ -751,6 +751,80 @@ struct ContentView: View {
         beginConversion()
     }
 
+    /// The full convert-one-file pipeline, driven by explicit settings instead of
+    /// @State so it can run from both the UI and the headless `--convert` CLI
+    /// (see Xe_Image_ConvertApp.swift). Returns nil on success, or an error string.
+    func convert(inputURL: URL, outputURL: URL, settings: ConvertSettings) -> String? {
+        guard let nsImage = loadImage(from: inputURL) else {
+            return "Failed to load image: \(inputURL.lastPathComponent)"
+        }
+
+        var processedImage = nsImage
+
+        if settings.removeLetterboxing {
+            processedImage = cropLetterboxing(processedImage)
+        }
+
+        if settings.aspect != .original {
+            let targetAspect: CGFloat
+            switch settings.aspect {
+            case .original: targetAspect = nsImage.size.width / nsImage.size.height
+            case .square: targetAspect = 1.0
+            case .fourThree: targetAspect = 4.0 / 3.0
+            case .sixteenNine: targetAspect = 16.0 / 9.0
+            case .nineSixteen: targetAspect = 9.0 / 16.0
+            case .threeTwo: targetAspect = 3.0 / 2.0
+            case .twoThree: targetAspect = 2.0 / 3.0
+            case .twoOne: targetAspect = 2.0 / 1.0
+            case .twoFourOne: targetAspect = 2.4 / 1.0
+            }
+            processedImage = cropImageToAspectRatio(
+                processedImage,
+                aspectRatio: targetAspect,
+                mode: settings.scalingMode,
+                anchorPoint: settings.anchor
+            )
+        }
+
+        if settings.resolution != .original {
+            processedImage = resizeImageToResolution(processedImage, targetResolution: settings.resolution)
+        }
+
+        switch settings.format {
+        case .jpg:
+            guard let tiffData = processedImage.tiffRepresentation,
+                  let rep = NSBitmapImageRep(data: tiffData),
+                  let data = rep.representation(using: .jpeg, properties: [.compressionFactor: settings.quality]) else {
+                return "Failed to encode JPEG: \(inputURL.lastPathComponent)"
+            }
+            do { try data.write(to: outputURL) } catch {
+                return "Error saving \(inputURL.lastPathComponent): \(error.localizedDescription)"
+            }
+        case .png:
+            guard let tiffData = processedImage.tiffRepresentation,
+                  let rep = NSBitmapImageRep(data: tiffData),
+                  let data = rep.representation(using: .png, properties: [:]) else {
+                return "Failed to encode PNG: \(inputURL.lastPathComponent)"
+            }
+            do { try data.write(to: outputURL) } catch {
+                return "Error saving \(inputURL.lastPathComponent): \(error.localizedDescription)"
+            }
+        case .tiff:
+            guard let tiffData = processedImage.tiffRepresentation else {
+                return "Failed to encode TIFF: \(inputURL.lastPathComponent)"
+            }
+            do { try tiffData.write(to: outputURL) } catch {
+                return "Error saving \(inputURL.lastPathComponent): \(error.localizedDescription)"
+            }
+        case .webp:
+            if !saveImageAsWebP(processedImage, to: outputURL, quality: CGFloat(settings.quality)) {
+                return "Error saving WebP: \(inputURL.lastPathComponent)"
+            }
+        }
+
+        return nil
+    }
+
     private func beginConversion() {
         DispatchQueue.main.async {
             isConverting = true
@@ -767,83 +841,20 @@ struct ContentView: View {
             var errorMessages: [String] = []
 
             func processImage(inputURL: URL, outputURL: URL) -> Bool {
-                guard let nsImage = loadImage(from: inputURL) else {
-                    errorMessages.append("Failed to load image: \(inputURL.lastPathComponent)")
+                let settings = ConvertSettings(
+                    format: selectedFormat,
+                    aspect: selectedAspect,
+                    resolution: selectedResolution,
+                    scalingMode: selectedScalingMode,
+                    removeLetterboxing: shouldRemoveLetterboxing,
+                    quality: quality,
+                    anchor: getAnchorPoint(for: inputURL)
+                )
+                if let error = convert(inputURL: inputURL, outputURL: outputURL, settings: settings) {
+                    errorMessages.append(error)
                     return false
                 }
-
-                var processedImage = nsImage
-
-                if shouldRemoveLetterboxing {
-                    processedImage = cropLetterboxing(processedImage)
-                }
-
-                if selectedAspect != .original {
-                    let targetAspect: CGFloat
-                    switch selectedAspect {
-                    case .original: targetAspect = nsImage.size.width / nsImage.size.height
-                    case .square: targetAspect = 1.0
-                    case .fourThree: targetAspect = 4.0 / 3.0
-                    case .sixteenNine: targetAspect = 16.0 / 9.0
-                    case .nineSixteen: targetAspect = 9.0 / 16.0
-                    case .threeTwo: targetAspect = 3.0 / 2.0
-                    case .twoThree: targetAspect = 2.0 / 3.0
-                    case .twoOne: targetAspect = 2.0 / 1.0
-                    case .twoFourOne: targetAspect = 2.4 / 1.0
-                    }
-                    processedImage = cropImageToAspectRatio(
-                        processedImage,
-                        aspectRatio: targetAspect,
-                        mode: selectedScalingMode,
-                        anchorPoint: getAnchorPoint(for: inputURL)
-                    )
-                }
-
-                if selectedResolution != .original {
-                    processedImage = resizeImageToResolution(processedImage, targetResolution: selectedResolution)
-                }
-
-                var success = false
-                switch selectedFormat {
-                case .jpg:
-                    if let tiffData = processedImage.tiffRepresentation,
-                       let rep = NSBitmapImageRep(data: tiffData),
-                       let data = rep.representation(using: .jpeg, properties: [.compressionFactor: quality]) {
-                        do {
-                            try data.write(to: outputURL)
-                            success = true
-                        } catch {
-                            errorMessages.append("Error saving \(inputURL.lastPathComponent): \(error.localizedDescription)")
-                        }
-                    }
-                case .png:
-                    if let tiffData = processedImage.tiffRepresentation,
-                       let rep = NSBitmapImageRep(data: tiffData),
-                       let data = rep.representation(using: .png, properties: [:]) {
-                        do {
-                            try data.write(to: outputURL)
-                            success = true
-                        } catch {
-                            errorMessages.append("Error saving \(inputURL.lastPathComponent): \(error.localizedDescription)")
-                        }
-                    }
-                case .tiff:
-                    if let tiffData = processedImage.tiffRepresentation {
-                        do {
-                            try tiffData.write(to: outputURL)
-                            success = true
-                        } catch {
-                            errorMessages.append("Error saving \(inputURL.lastPathComponent): \(error.localizedDescription)")
-                        }
-                    }
-                case .webp:
-                    success = saveImageAsWebP(processedImage, to: outputURL, quality: CGFloat(quality))
-                    if !success {
-                        errorMessages.append("Error saving WebP: \(inputURL.lastPathComponent)")
-                    }
-                }
-
-                return success
+                return true
             }
 
             for url in processingQueue {
@@ -1122,6 +1133,18 @@ enum ScalingMode: String, CaseIterable {
         case .fit: return "Fit"
         }
     }
+}
+
+/// All inputs to a single conversion, decoupled from the UI's @State so the
+/// pipeline can be driven headlessly for testing.
+struct ConvertSettings {
+    var format: ImageFormat
+    var aspect: AspectOption
+    var resolution: ResolutionOption
+    var scalingMode: ScalingMode
+    var removeLetterboxing: Bool
+    var quality: Double
+    var anchor: CGPoint = CGPoint(x: 0.5, y: 0.5)
 }
 
 #Preview {

@@ -5,6 +5,10 @@
 ## User settings
 xcuserdata/
 
+## Application Tester (harness build output + generated reports)
+build-test/
+test-reports/
+
 ## compatibility with Xcode 8 and earlier (ignoring not required starting Xcode 9)
 *.xcscmblueprint
 *.xccheckout
