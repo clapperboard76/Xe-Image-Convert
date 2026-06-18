@@ -116,3 +116,6 @@ iOSInjectionProject/
 Network Trash Folder
 Temporary Items
 .apdisk 
+# Release build artifacts (regenerable; not tracked in git)
+Releases/
+Releases-Beta/
