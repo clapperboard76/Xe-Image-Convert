@@ -39,7 +39,11 @@ APP_PATH="${RELEASE_DIR}/Export/${APP_NAME}.app"
 VERSION=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "${APP_PATH}/Contents/Info.plist")
 BUILD=$(/usr/libexec/PlistBuddy -c "Print CFBundleVersion" "${APP_PATH}/Contents/Info.plist")
 ZIP_NAME="${APP_SLUG}-${VERSION}.zip"
-DMG_NAME="${APP_SLUG}-${VERSION}.dmg"
+# Installer DMG is named with the app's display name + version (URL-safe form),
+# per the studio "Installer DMG convention". The public download route and admin
+# page resolve this filename from the appcast version — no per-release edit needed.
+DMG_APP_NAME="Xe-Image-Convert"
+DMG_NAME="${DMG_APP_NAME}-${VERSION}.dmg"
 ZIP_PATH="${RELEASE_DIR}/${ZIP_NAME}"
 DMG_PATH="${RELEASE_DIR}/${DMG_NAME}"
 
@@ -60,13 +64,18 @@ echo "==> Re-zipping after staple..."
 rm "$ZIP_PATH"
 ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
 
-echo "==> Creating DMG..."
+echo "==> Creating DMG (with drag-to-install /Applications shortcut)..."
 rm -f "$DMG_PATH"
+DMG_STAGE="${RELEASE_DIR}/dmg_stage"
+rm -rf "$DMG_STAGE" && mkdir -p "$DMG_STAGE"
+cp -R "$APP_PATH" "$DMG_STAGE/"
+ln -s /Applications "$DMG_STAGE/Applications"
 hdiutil create \
-    -volname "${APP_NAME}" \
-    -srcfolder "$APP_PATH" \
+    -volname "${APP_NAME} ${VERSION}" \
+    -srcfolder "$DMG_STAGE" \
     -ov -format UDZO \
     "$DMG_PATH"
+rm -rf "$DMG_STAGE"
 
 echo "==> Generating appcast..."
 STAGING_DIR="${RELEASE_DIR}/appcast_staging"
@@ -87,10 +96,6 @@ wrangler r2 object put "${R2_BUCKET}/${R2_PREFIX}/${ZIP_NAME}" \
     --content-type "application/zip" --remote
 
 wrangler r2 object put "${R2_BUCKET}/${R2_PREFIX}/${DMG_NAME}" \
-    --file "$DMG_PATH" \
-    --content-type "application/x-apple-diskimage" --remote
-
-wrangler r2 object put "${R2_BUCKET}/${R2_PREFIX}/latest.dmg" \
     --file "$DMG_PATH" \
     --content-type "application/x-apple-diskimage" --remote
 
@@ -126,4 +131,4 @@ fi
 echo ""
 echo "==> Done! v${VERSION} is live."
 echo "    Appcast: ${APPCAST_BASE_URL}/appcast.xml"
-echo "    DMG:     ${APPCAST_BASE_URL}/latest.dmg"
+echo "    DMG:     ${APPCAST_BASE_URL}/${DMG_NAME}"
